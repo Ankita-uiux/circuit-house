@@ -1,0 +1,19 @@
+# Render Blueprint: one free web service that serves the API and the storefront.
+# Database: use a free Neon Postgres and paste its connection string as DATABASE_URL.
+services:
+  - type: web
+    name: circuit-house
+    runtime: node
+    plan: free
+    buildCommand: bash scripts/render-build.sh
+    startCommand: NODE_ENV=production node --enable-source-maps artifacts/api-server/dist/index.mjs
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: DATABASE_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false

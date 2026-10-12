@@ -8,6 +8,7 @@ import {
   getAssistantBehaviorSettings,
   saveAssistantBehaviorSettings,
 } from "../lib/assistant-behavior";
+import { requireAdmin, verifyAdminPassword } from "../lib/admin-auth";
 
 const router: IRouter = Router();
 
@@ -21,7 +22,9 @@ router.get("/shop/assistant/settings", async (req, res): Promise<void> => {
   }
 });
 
-router.put("/shop/assistant/settings", async (req, res): Promise<void> => {
+router.post("/shop/admin/verify", verifyAdminPassword);
+
+router.put("/shop/assistant/settings", requireAdmin, async (req, res): Promise<void> => {
   const parsed = UpdateAssistantBehaviorSettingsBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });

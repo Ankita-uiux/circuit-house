@@ -1,8 +1,8 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
-import { AlertTriangle, ArrowLeft, Check, ChevronRight, CircleHelp, RotateCcw, Save, SlidersHorizontal } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Check, ChevronRight, CircleHelp, Lock, RotateCcw, Save, SlidersHorizontal } from 'lucide-react';
 import {
   getGetAssistantBehaviorSettingsQueryKey,
   useGetAssistantBehaviorSettings,
@@ -54,12 +54,128 @@ const defaults: SettingsForm = {
   goalOrientationScale: 5,
 };
 
+const PASSWORD_KEY = 'circuit-house-admin-password';
+const ADMIN_PASSWORD_HEADER = 'x-admin-password';
+
+function readStoredPassword() {
+  try { return sessionStorage.getItem(PASSWORD_KEY) ?? ''; } catch { return ''; }
+}
+function storePassword(value: string | null) {
+  try {
+    if (value) sessionStorage.setItem(PASSWORD_KEY, value);
+    else sessionStorage.removeItem(PASSWORD_KEY);
+  } catch { /* storage unavailable: password lives only in memory */ }
+}
+
+type VerifyResult = { ok: true; passwordRequired: boolean } | { ok: false; reason: 'wrong' | 'unreachable' };
+
+async function verifyAdminPassword(password: string): Promise<VerifyResult> {
+  try {
+    const response = await fetch(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/api/shop/admin/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    if (response.status === 401) return { ok: false, reason: 'wrong' };
+    if (!response.ok) return { ok: false, reason: 'unreachable' };
+    const body = await response.json() as { passwordRequired?: boolean };
+    return { ok: true, passwordRequired: Boolean(body.passwordRequired) };
+  } catch {
+    return { ok: false, reason: 'unreachable' };
+  }
+}
+
+type Gate =
+  | { state: 'checking' }
+  | { state: 'locked'; message?: string }
+  | { state: 'open'; password: string; passwordRequired: boolean };
+
 export default function Admin() {
+  const [gate, setGate] = useState<Gate>({ state: 'checking' });
+
+  useEffect(() => {
+    let cancelled = false;
+    const stored = readStoredPassword();
+    void verifyAdminPassword(stored).then((result) => {
+      if (cancelled) return;
+      if (result.ok) setGate({ state: 'open', password: stored, passwordRequired: result.passwordRequired });
+      else {
+        storePassword(null);
+        setGate({ state: 'locked', message: result.reason === 'unreachable' ? 'We couldn’t reach the store server. Try again in a moment.' : undefined });
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const lock = (message?: string) => {
+    storePassword(null);
+    setGate({ state: 'locked', message });
+  };
+
+  return (
+    <div className="admin-shell">
+      <div className="admin-topline">Circuit House <span>/</span> assistant controls</div>
+      <header className="admin-header">
+        <Link href="/" className="brand admin-brand" data-testid="link-admin-store">
+          <span className="brand-mark" aria-hidden="true" />
+          <span className="brand-name">circuit house</span>
+        </Link>
+        <Link href="/" className="admin-return" data-testid="link-return-store"><ArrowLeft size={14} /> Back to the store</Link>
+      </header>
+      {gate.state === 'open'
+        ? <AdminSettings password={gate.password} passwordRequired={gate.passwordRequired} onLocked={lock} />
+        : (
+          <main className="admin-main">
+            {gate.state === 'checking'
+              ? <section className="admin-login" aria-busy="true" data-testid="loading-admin-gate"><span className="admin-skeleton admin-skeleton-title" /></section>
+              : <AdminLogin message={gate.message} onUnlocked={(password, passwordRequired) => { storePassword(password); setGate({ state: 'open', password, passwordRequired }); }} />}
+          </main>
+        )}
+    </div>
+  );
+}
+
+function AdminLogin({ message, onUnlocked }: { message?: string; onUnlocked: (password: string, passwordRequired: boolean) => void }) {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | undefined>(message);
+  const [checking, setChecking] = useState(false);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!password) { setError('Enter the admin password.'); return; }
+    setChecking(true);
+    const result = await verifyAdminPassword(password);
+    setChecking(false);
+    if (result.ok) onUnlocked(password, result.passwordRequired);
+    else setError(result.reason === 'wrong' ? 'That password isn’t right. Check with whoever set up the store.' : 'We couldn’t reach the store server. Try again in a moment.');
+  };
+
+  return (
+    <section className="admin-login" aria-labelledby="admin-login-title">
+      <div className="admin-login-mark" aria-hidden="true"><Lock size={18} /></div>
+      <div className="eyebrow">Assistant controls · Staff only</div>
+      <h1 id="admin-login-title">Enter the admin password</h1>
+      <p>These settings change how the shopping assistant talks to every visitor, so they’re locked.</p>
+      <form onSubmit={(event) => void submit(event)} className="admin-login-form">
+        <label htmlFor="admin-password" className="admin-field-label">Password</label>
+        <div className="admin-login-row">
+          <input id="admin-password" type="password" autoComplete="current-password" className="admin-login-input" value={password} onChange={(event) => { setPassword(event.target.value); setError(undefined); }} data-testid="input-admin-password" />
+          <button type="submit" className="admin-save-button" disabled={checking} data-testid="button-admin-unlock">{checking ? 'Checking…' : 'Unlock'}</button>
+        </div>
+        <div className="admin-login-error" role="alert" data-testid="text-admin-login-error">{error ?? ''}</div>
+      </form>
+    </section>
+  );
+}
+
+function AdminSettings({ password, passwordRequired, onLocked }: { password: string; passwordRequired: boolean; onLocked: (message?: string) => void }) {
   const queryClient = useQueryClient();
   const settingsQuery = useGetAssistantBehaviorSettings({
     query: { queryKey: getGetAssistantBehaviorSettingsQueryKey() },
   });
-  const saveSettings = useUpdateAssistantBehaviorSettings();
+  const saveSettings = useUpdateAssistantBehaviorSettings({
+    request: { headers: password ? { [ADMIN_PASSWORD_HEADER]: password } : {} },
+  });
   const [saved, setSaved] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
   const form = useForm<SettingsForm>({ defaultValues: defaults, mode: 'onChange' });
@@ -80,7 +196,13 @@ export default function Admin() {
         setSaved(true);
         void queryClient.invalidateQueries({ queryKey: getGetAssistantBehaviorSettingsQueryKey() });
       },
-      onError: () => setSaveFailed(true),
+      onError: (error) => {
+        if ((error as { status?: number } | null)?.status === 401) {
+          onLocked('Your session needs the admin password again. Your unsaved edits were not kept.');
+          return;
+        }
+        setSaveFailed(true);
+      },
     });
   });
 
@@ -90,16 +212,6 @@ export default function Admin() {
     : null;
 
   return (
-    <div className="admin-shell">
-      <div className="admin-topline">Circuit House <span>/</span> assistant controls</div>
-      <header className="admin-header">
-        <Link href="/" className="brand admin-brand" data-testid="link-admin-store">
-          <span className="brand-mark" aria-hidden="true" />
-          <span className="brand-name">circuit house</span>
-        </Link>
-        <Link href="/" className="admin-return" data-testid="link-return-store"><ArrowLeft size={14} /> Back to the store</Link>
-      </header>
-
       <main className="admin-main">
         <div className="admin-breadcrumb" aria-label="Page location"><span>Store tools</span><ChevronRight size={12} /><strong>Assistant behavior</strong></div>
         <div className="admin-heading">
@@ -111,14 +223,14 @@ export default function Admin() {
           <div className="admin-heading-mark" aria-hidden="true"><SlidersHorizontal size={27} strokeWidth={1.2} /><span>CH / 01</span></div>
         </div>
 
-        <aside className="admin-access-warning" role="note" data-testid="notice-admin-access">
+        {!passwordRequired && <aside className="admin-access-warning" role="note" data-testid="notice-admin-access">
           <div className="admin-warning-icon"><AlertTriangle size={17} /></div>
           <div>
             <strong>This page has no login.</strong>
-            <p>Anyone who visits <code>/admin</code> can change the assistant’s public settings. Keep this page private or restrict access at the hosting level.</p>
+            <p>Anyone who visits <code>/admin</code> can change the assistant’s public settings. Set an <code>ADMIN_PASSWORD</code> on the server before sharing the store.</p>
           </div>
           <span className="warning-flag">Access note</span>
-        </aside>
+        </aside>}
 
         {settingsQuery.isLoading ? (
           <section className="admin-loading" aria-label="Loading assistant settings" data-testid="loading-assistant-settings">
@@ -245,7 +357,6 @@ export default function Admin() {
 
         <footer className="admin-footer"><span>Thoughtful tech. Clear answers.</span><span>Assistant controls <i>·</i> Circuit House</span></footer>
       </main>
-    </div>
   );
 }
 
