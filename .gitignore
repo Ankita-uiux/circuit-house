@@ -47,3 +47,6 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# pnpm installed by scripts/render-build.sh
+.build-tools

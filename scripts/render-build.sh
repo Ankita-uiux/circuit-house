@@ -3,7 +3,12 @@
 # Needs DATABASE_URL to be set so the database tables can be created/updated.
 set -euo pipefail
 
-npm install -g pnpm@10.34.6
+# Render's system folders are read-only, so install pnpm inside the project.
+TOOLS_DIR="$PWD/.build-tools"
+npm install --prefix "$TOOLS_DIR" --no-save --no-audit --no-fund pnpm@10.34.6
+export PATH="$TOOLS_DIR/node_modules/.bin:$PATH"
+pnpm --version
+
 pnpm install --frozen-lockfile
 
 # Create or update the database tables (adds new columns; never drops data).
