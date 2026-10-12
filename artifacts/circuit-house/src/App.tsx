@@ -1,6 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ArrowDownUp, ArrowLeft, ArrowRight, Check, CheckCircle2, Headphones, Laptop, Minus, Plus, Search, Send, ShieldCheck, ShoppingBag, Sparkles, Truck, X } from 'lucide-react';
+import { ArrowDownUp, ArrowLeft, ArrowRight, Check, CheckCircle2, Headphones, Laptop, Minus, Plus, Search, Send, ShieldCheck, ShoppingBag, Sparkles, Truck, X, MessageCircle } from 'lucide-react';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { getListProductsQueryKey, useGetShoppingAssistantReply, useListProducts } from '@workspace/api-client-react';
 import type { Product, ShoppingAssistantTurn } from '@workspace/api-client-react';
@@ -116,9 +116,10 @@ function Home({
   const [category, setCategory] = useState('Everything');
   const [sort, setSort] = useState('recommended');
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Tell me what you need your tech to do. I’ll narrow the shelf to a few things worth considering.' },
+    { role: 'assistant', content: 'Hi! Tell me what you’ll use it for and your budget.\n\nI’ll suggest a few options from our catalog and explain the trade-offs in plain words.' },
   ]);
   const [prompt, setPrompt] = useState('');
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const assistant = useGetShoppingAssistantReply();
   const categories = useMemo(() => ['Everything', ...Array.from(new Set(products.map((product) => product.category)))], [products]);
   const visibleProducts = useMemo(() => {
@@ -159,7 +160,10 @@ function Home({
               <div className="eyebrow">A better way to buy electronics</div>
               <h1 id="hero-title">Good gear.<br />Clear answers.</h1>
               <p>Tell us what matters. We’ll help you find the right thing, without the spec-sheet maze.</p>
-              <a href="#catalog" className="hero-cta" data-testid="link-explore-catalog">Find your next favorite <ArrowRight size={15} /></a>
+              <div className="hero-actions">
+                <a href="#catalog" className="hero-cta" data-testid="link-explore-catalog">Find your next favorite <ArrowRight size={15} /></a>
+                <button type="button" className="hero-cta hero-cta-secondary" onClick={() => setAssistantOpen(true)} data-testid="button-hero-ask"><Sparkles size={14} /> Ask Circuit for help</button>
+              </div>
             </div>
             <div className="hero-art" aria-label="Abstract illustration of carefully selected technology">
               <div className="orb" /><div className="orb-ring" /><div className="hero-device" />
@@ -173,45 +177,6 @@ function Home({
           <div className="benefit"><Truck size={15} /> Straightforward delivery</div>
           <div className="benefit"><Headphones size={15} /> Real help, before and after</div>
         </div>
-
-        <section className="assistant-card" aria-label="Shopping assistant">
-          <div className="assistant-inner">
-            <div className="assistant-intro">
-              <div className="assistant-kicker"><Sparkles size={12} /> A little help finding the right fit</div>
-              <h2>Start with what<br />you actually need.</h2>
-              <p>Our catalog guide matches your use, budget and priorities to products we carry. No outside recommendations.</p>
-            </div>
-            <div className="assistant-chat">
-              <div className="assistant-heading"><span>Ask Circuit</span><span>Catalog-grounded guide</span></div>
-              <div className="chat-messages" aria-live="polite" data-testid="assistant-conversation">
-                {messages.map((message, index) => (
-                  <div key={`${index}-${message.role}`}>
-                    <div className={`chat-bubble ${message.role}`} data-testid={`message-${message.role}-${index}`}>{message.content}</div>
-                    {!!message.products?.length && (
-                      <div className="chat-match-list">
-                        {message.products.map((product) => (
-                          <button key={product.id} className="chat-match" onClick={() => addToCart(product)} data-testid={`assistant-match-${product.id}`}>
-                            {product.name} · {formatPrice(product.price)} · add
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {assistant.isPending && <div className="chat-bubble">Looking through the catalog for a good fit…</div>}
-              </div>
-              <form className="chat-input-row" onSubmit={(event) => { event.preventDefault(); sendPrompt(); }}>
-                <input className="chat-input" value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="I need headphones for a long commute…" maxLength={1000} aria-label="Describe what you're shopping for" data-testid="input-assistant-prompt" />
-                <button className="send-button" type="submit" disabled={!prompt.trim() || assistant.isPending} aria-label="Send question" data-testid="button-send-prompt"><Send size={16} /></button>
-              </form>
-              {messages.length === 1 && <div className="assistant-suggestions">
-                {['A laptop for design school', 'Headphones for travel', 'A simple home speaker'].map((suggestion) => (
-                  <button className="suggestion" key={suggestion} onClick={() => sendPrompt(suggestion)} data-testid={`button-suggestion-${suggestion.toLowerCase().replaceAll(' ', '-')}`}>{suggestion}</button>
-                ))}
-              </div>}
-            </div>
-          </div>
-        </section>
 
         <section className="shop-section" id="catalog">
           <div className="section-heading">
@@ -240,8 +205,164 @@ function Home({
         </section>
       </main>
       <footer className="footer"><span>© Circuit House · A more considered kind of tech shop.</span><span>Clear choices, human advice.</span></footer>
+      {!assistantOpen && (
+        <button type="button" className="assistant-fab" onClick={() => setAssistantOpen(true)} aria-label="Open the shopping assistant" data-testid="button-open-assistant">
+          <MessageCircle size={19} strokeWidth={1.8} />
+          <span>Ask Circuit</span>
+          {messages.length > 1 && <span className="assistant-fab-dot" aria-hidden="true" />}
+        </button>
+      )}
+      {assistantOpen && (
+        <AssistantPanel
+          messages={messages}
+          prompt={prompt}
+          setPrompt={setPrompt}
+          pending={assistant.isPending}
+          onSend={sendPrompt}
+          onAdd={addToCart}
+          onClose={() => setAssistantOpen(false)}
+        />
+      )}
       {cartOpen && <CartDrawer cart={cart} changeQuantity={changeQuantity} onClose={() => setCartOpen(false)} />}
     </div>
+  );
+}
+
+const SUGGESTIONS = ['A laptop for design school', 'Headphones for travel', 'Best phone under $800'];
+
+function AssistantPanel({
+  messages, prompt, setPrompt, pending, onSend, onAdd, onClose,
+}: {
+  messages: Message[];
+  prompt: string;
+  setPrompt: (value: string) => void;
+  pending: boolean;
+  onSend: (value?: string) => void;
+  onAdd: (product: Product) => void;
+  onClose: () => void;
+}) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => {
+    const list = listRef.current;
+    if (list) list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
+  }, [messages.length, pending]);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <>
+      <div className="assistant-panel-scrim" onClick={onClose} aria-hidden="true" />
+      <aside className="assistant-panel" role="dialog" aria-labelledby="assistant-panel-title" data-testid="panel-assistant">
+        <header className="assistant-panel-top">
+          <div className="assistant-panel-mark" aria-hidden="true"><Sparkles size={15} /></div>
+          <div className="assistant-panel-titles">
+            <h2 id="assistant-panel-title">Ask Circuit</h2>
+            <p>Honest picks from our catalog. No upsell.</p>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Close the shopping assistant" data-testid="button-close-assistant"><X size={17} /></button>
+        </header>
+
+        <div className="assistant-panel-messages" ref={listRef} aria-live="polite" data-testid="assistant-conversation">
+          {messages.map((message, index) => (
+            <div key={`${index}-${message.role}`} className={`assistant-turn ${message.role}`}>
+              <div className={`assistant-message ${message.role}`} data-testid={`message-${message.role}-${index}`}>
+                {message.role === 'assistant' ? <FormattedReply text={message.content} /> : message.content}
+              </div>
+              {!!message.products?.length && (
+                <div className="assistant-picks">
+                  {message.products.map((product) => (
+                    <div key={product.id} className="assistant-pick">
+                      <div className="assistant-pick-info">
+                        <span className="assistant-pick-category">{product.category}</span>
+                        <strong>{product.name}</strong>
+                        <span className="assistant-pick-price">{formatPrice(product.price)}</span>
+                      </div>
+                      <button type="button" className="assistant-pick-add" onClick={() => onAdd(product)} data-testid={`assistant-match-${product.id}`}><Plus size={13} /> Add to bag</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+          {pending && (
+            <div className="assistant-turn assistant">
+              <div className="assistant-message assistant assistant-thinking" data-testid="status-assistant-thinking"><span /><span /><span /> Looking through the catalog…</div>
+            </div>
+          )}
+        </div>
+
+        <div className="assistant-panel-bottom">
+          {messages.length === 1 && (
+            <div className="assistant-suggestions">
+              {SUGGESTIONS.map((suggestion) => (
+                <button type="button" className="suggestion" key={suggestion} onClick={() => onSend(suggestion)} data-testid={`button-suggestion-${suggestion.toLowerCase().replaceAll(' ', '-')}`}>{suggestion}</button>
+              ))}
+            </div>
+          )}
+          <form className="assistant-input-row" onSubmit={(event) => { event.preventDefault(); onSend(); }}>
+            <textarea
+              ref={inputRef}
+              className="assistant-input"
+              rows={2}
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); onSend(); } }}
+              placeholder="Tell me what it's for and your budget…"
+              maxLength={1000}
+              aria-label="Describe what you're shopping for"
+              data-testid="input-assistant-prompt"
+            />
+            <button className="send-button" type="submit" disabled={!prompt.trim() || pending} aria-label="Send question" data-testid="button-send-prompt"><Send size={16} /></button>
+          </form>
+          <p className="assistant-footnote">Knows only the Circuit House catalog. Prices shown are our prices.</p>
+        </div>
+      </aside>
+    </>
+  );
+}
+
+/** Renders the assistant's plain-text reply: paragraphs, "- " bullet lists, numbered lists and **bold**. */
+function FormattedReply({ text }: { text: string }) {
+  const blocks = text.replace(/\r\n/g, '\n').split(/\n\s*\n/).map((block) => block.trim()).filter(Boolean);
+  return (
+    <>
+      {blocks.map((block, blockIndex) => {
+        const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
+        const bullet = /^[-•*]\s+/;
+        const numbered = /^\d+[.)]\s+/;
+        if (lines.every((line) => bullet.test(line))) {
+          return <ul key={blockIndex}>{lines.map((line, i) => <li key={i}>{renderInline(line.replace(bullet, ''))}</li>)}</ul>;
+        }
+        if (lines.every((line) => numbered.test(line))) {
+          return <ol key={blockIndex}>{lines.map((line, i) => <li key={i}>{renderInline(line.replace(numbered, ''))}</li>)}</ol>;
+        }
+        // A paragraph followed by bullets in the same block
+        const firstBullet = lines.findIndex((line) => bullet.test(line));
+        if (firstBullet > 0 && lines.slice(firstBullet).every((line) => bullet.test(line))) {
+          return (
+            <Fragment key={blockIndex}>
+              <p>{lines.slice(0, firstBullet).map((line, i) => <Fragment key={i}>{i > 0 && ' '}{renderInline(line)}</Fragment>)}</p>
+              <ul>{lines.slice(firstBullet).map((line, i) => <li key={i}>{renderInline(line.replace(bullet, ''))}</li>)}</ul>
+            </Fragment>
+          );
+        }
+        return <p key={blockIndex}>{lines.map((line, i) => <Fragment key={i}>{i > 0 && <br />}{renderInline(line)}</Fragment>)}</p>;
+      })}
+    </>
+  );
+}
+
+function renderInline(text: string): ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**') && part.length > 4
+      ? <strong key={i}>{part.slice(2, -2)}</strong>
+      : <Fragment key={i}>{part}</Fragment>,
   );
 }
 
