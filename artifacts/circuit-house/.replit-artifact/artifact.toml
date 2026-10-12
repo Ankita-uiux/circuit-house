@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Circuit House"
+description = "A responsive electronics storefront with a conversational shopping assistant that helps customers find suitable products and add them to their cart."
+version = "1.0.0"
+id = "artifacts/circuit-house"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23979
+
+[services.development]
+run = "pnpm --filter @workspace/circuit-house run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/circuit-house", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/circuit-house/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23979"
+BASE_PATH = "/"
