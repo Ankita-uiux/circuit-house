@@ -127,25 +127,44 @@ components:
           type: string
         name:
           type: string
+        brand:
+          type: string
         category:
           type: string
         price:
           type: number
+          description: Price in Indian rupees (INR).
         description:
           type: string
+        specs:
+          type: array
+          description: Key specifications in plain words, most important first.
+          items:
+            type: string
         image:
-          type: string
-        rating:
-          type: number
-        reviewCount:
-          type: integer
+          type: ["string", "null"]
+          description: Optional photo URL. When null, the storefront shows a brand tile.
         tags:
           type: array
           items:
             type: string
         badge:
           type: ["string", "null"]
-      required: [id, name, category, price, description, image, rating, reviewCount, tags, badge]
+        priceSource:
+          $ref: "#/components/schemas/PriceSource"
+      required: [id, name, brand, category, price, description, specs, image, tags, badge, priceSource]
+    PriceSource:
+      type: object
+      description: Where the listed price came from, so shoppers can check it.
+      properties:
+        label:
+          type: string
+        url:
+          type: string
+        asOf:
+          type: string
+          description: Date the price was checked, e.g. "12 Oct 2026".
+      required: [label, url, asOf]
     ShoppingAssistantTurn:
       type: object
       properties:

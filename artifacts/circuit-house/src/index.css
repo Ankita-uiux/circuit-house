@@ -513,3 +513,35 @@
   .assistant-fab, .assistant-panel { animation:none; }
   .assistant-thinking span { animation:none;opacity:.6; }
 }
+
+/* ---------- Real catalog: brand tiles, specs, rupee prices ---------- */
+.brand-tile { width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#2c5a4b;background:radial-gradient(circle at 30% 25%,#f7f4ea 0%,#e4e7da 55%,#d3dccf 100%); }
+.brand-tile svg { width:46px;height:46px; }
+.brand-tile span { font:600 18px var(--app-font-display);letter-spacing:-.04em;color:#1d3f35; }
+.brand-tile-phones { background:radial-gradient(circle at 30% 25%,#f7f4ea 0%,#e6e3d6 55%,#d9d4c4 100%); }
+.brand-tile-laptops { background:radial-gradient(circle at 30% 25%,#f4f6ef 0%,#dde5dc 55%,#c8d6cc 100%); }
+.brand-tile-tablets { background:radial-gradient(circle at 30% 25%,#f6f3ea 0%,#e8e1d4 55%,#dccfbd 100%); }
+.brand-tile-audio { background:radial-gradient(circle at 30% 25%,#f3f4ee 0%,#dfe3e2 55%,#cbd3d4 100%); }
+.brand-tile-wearables { background:radial-gradient(circle at 30% 25%,#f7f2ea 0%,#ece0d3 55%,#e0cdb9 100%); }
+.brand-tile-accessories { background:radial-gradient(circle at 30% 25%,#f2f3ec 0%,#e2e4d8 55%,#d0d4c3 100%); }
+.brand-tile-thumb { gap:0; }
+.brand-tile-thumb svg { width:24px;height:24px; }
+.cart-thumb { overflow:hidden; }
+.cart-thumb img { width:100%;height:100%;object-fit:cover; }
+
+.product-description { height:auto;min-height:34px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical; }
+.product-specs { list-style:none;margin:10px 0 12px;padding:0;display:flex;flex-direction:column;gap:3px;min-height:54px; }
+.product-specs li { position:relative;padding-left:11px;font-size:11px;line-height:1.45;color:#4f5f56; }
+.product-specs li::before { content:"";position:absolute;left:0;top:7px;width:4px;height:4px;border-radius:50%;background:#7fa294; }
+.price-block { display:flex;flex-direction:column;gap:2px;min-width:0; }
+.price { font-variant-numeric:tabular-nums; }
+.price-source { display:inline-flex;align-items:center;gap:3px;font:9px var(--app-font-mono);color:#8a9387;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.price-source:hover { color:#2d6c57;text-decoration:underline; }
+.footer { gap:16px;flex-wrap:wrap; }
+.footer span { min-width:0; }
+@media (max-width:680px) {
+  .brand-tile svg { width:34px;height:34px; }
+  .brand-tile span { font-size:15px; }
+  .product-specs { min-height:0;margin:8px 0 10px; }
+  .product-specs li { font-size:10px; }
+}

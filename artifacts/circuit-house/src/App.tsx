@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ArrowDownUp, ArrowLeft, ArrowRight, Check, CheckCircle2, Headphones, Laptop, Minus, Plus, Search, Send, ShieldCheck, ShoppingBag, Sparkles, Truck, X, MessageCircle } from 'lucide-react';
+import { ArrowDownUp, ArrowLeft, ArrowRight, Check, CheckCircle2, Headphones, Laptop, Minus, Plus, Search, Send, ShieldCheck, ShoppingBag, Sparkles, Truck, X, MessageCircle, Smartphone, Tablet, Watch, Mouse, ExternalLink, type LucideIcon } from 'lucide-react';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { getListProductsQueryKey, useGetShoppingAssistantReply, useListProducts } from '@workspace/api-client-react';
 import type { Product, ShoppingAssistantTurn } from '@workspace/api-client-react';
@@ -126,12 +126,12 @@ function Home({
     let list = products.filter((product) => {
       const matchesCategory = category === 'Everything' || product.category === category;
       const query = search.trim().toLowerCase();
-      const matchesSearch = !query || [product.name, product.category, product.description, ...product.tags].join(' ').toLowerCase().includes(query);
+      const matchesSearch = !query || [product.name, product.brand, product.category, product.description, ...product.specs, ...product.tags].join(' ').toLowerCase().includes(query);
       return matchesCategory && matchesSearch;
     });
     if (sort === 'price-low') list = [...list].sort((a, b) => a.price - b.price);
     if (sort === 'price-high') list = [...list].sort((a, b) => b.price - a.price);
-    if (sort === 'rating') list = [...list].sort((a, b) => b.rating - a.rating);
+    if (sort === 'brand') list = [...list].sort((a, b) => a.brand.localeCompare(b.brand) || a.price - b.price);
     return list;
   }, [products, category, search, sort]);
 
@@ -188,7 +188,7 @@ function Home({
               {categories.map((item) => <button key={item} className={`category-tab ${category === item ? 'active' : ''}`} onClick={() => setCategory(item)} data-testid={`button-category-${item.toLowerCase().replaceAll(' ', '-')}`}>{item}</button>)}
             </div>
             <label className="sort-select-wrap"><ArrowDownUp size={13} color="#738079" /><select className="sort-select" value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort products" data-testid="select-product-sort">
-              <option value="recommended">Sort: recommended</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option><option value="rating">Top rated</option>
+              <option value="recommended">Sort: recommended</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option><option value="brand">Brand: A to Z</option>
             </select></label>
           </div>
           {productsQuery.isLoading ? <ProductSkeleton /> : productsQuery.isError ? (
@@ -204,7 +204,7 @@ function Home({
           )}
         </section>
       </main>
-      <footer className="footer"><span>© Circuit House · A more considered kind of tech shop.</span><span>Clear choices, human advice.</span></footer>
+      <footer className="footer"><span>© Circuit House · A student class project, not a real store. Not affiliated with any brand shown.</span><span>Prices are reference prices from Indian retailers and tech sites, checked October 2026. Tap “Ref. price” on a product to see its source.</span></footer>
       {!assistantOpen && (
         <button type="button" className="assistant-fab" onClick={() => setAssistantOpen(true)} aria-label="Open the shopping assistant" data-testid="button-open-assistant">
           <MessageCircle size={19} strokeWidth={1.8} />
@@ -228,7 +228,7 @@ function Home({
   );
 }
 
-const SUGGESTIONS = ['A laptop for design school', 'Headphones for travel', 'Best phone under $800'];
+const SUGGESTIONS = ['Laptop for Figma under ₹80,000', 'Phone under ₹30,000', 'Earbuds with ANC under ₹5,000'];
 
 function AssistantPanel({
   messages, prompt, setPrompt, pending, onSend, onAdd, onClose,
@@ -320,7 +320,7 @@ function AssistantPanel({
             />
             <button className="send-button" type="submit" disabled={!prompt.trim() || pending} aria-label="Send question" data-testid="button-send-prompt"><Send size={16} /></button>
           </form>
-          <p className="assistant-footnote">Knows only the Circuit House catalog. Prices shown are our prices.</p>
+          <p className="assistant-footnote">Knows only the Circuit House catalog. Prices are reference prices from October 2026.</p>
         </div>
       </aside>
     </>
@@ -366,20 +366,48 @@ function renderInline(text: string): ReactNode[] {
   );
 }
 
-function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }) {
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  Phones: Smartphone, Laptops: Laptop, Tablets: Tablet, Audio: Headphones, Wearables: Watch, Accessories: Mouse,
+};
+
+/** Product photo when one is set; otherwise a tile with the brand and a category icon. */
+function ProductVisual({ product, size = 'card' }: { product: Product; size?: 'card' | 'thumb' }) {
   const [imageFailed, setImageFailed] = useState(false);
+  if (product.image && !imageFailed) {
+    return <img src={product.image} alt={product.name} onError={() => setImageFailed(true)} data-testid={`img-product-${product.id}`} />;
+  }
+  const Icon = CATEGORY_ICONS[product.category] ?? ShoppingBag;
+  return (
+    <div className={`brand-tile brand-tile-${product.category.toLowerCase()} ${size === 'thumb' ? 'brand-tile-thumb' : ''}`} aria-hidden="true">
+      <Icon strokeWidth={1.25} />
+      {size === 'card' && <span>{product.brand}</span>}
+    </div>
+  );
+}
+
+function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }) {
   return (
     <article className="product-card" data-testid={`card-product-${product.id}`}>
       <div className="product-image">
-        {!imageFailed && product.image ? <img src={product.image} alt={product.name} onError={() => setImageFailed(true)} data-testid={`img-product-${product.id}`} /> : <div className="product-placeholder"><Laptop /></div>}
+        <ProductVisual product={product} />
         {product.badge && <span className="product-badge">{product.badge}</span>}
       </div>
       <div className="product-card-body">
-        <div className="product-category">{product.category}</div>
+        <div className="product-category">{product.brand} · {product.category}</div>
         <h3>{product.name}</h3>
         <div className="product-description">{product.description}</div>
-        <div className="rating-line"><span className="rating-stars" aria-label={`${product.rating} out of 5`}>★★★★★</span><span>{Number(product.rating).toFixed(1)}</span><span>({product.reviewCount} reviews)</span></div>
-        <div className="product-card-bottom"><span className="price">{formatPrice(product.price)}</span><button className="add-button" onClick={onAdd} aria-label={`Add ${product.name} to cart`} data-testid={`button-add-${product.id}`}><Plus size={17} /></button></div>
+        <ul className="product-specs">
+          {product.specs.slice(0, 3).map((spec) => <li key={spec}>{spec}</li>)}
+        </ul>
+        <div className="product-card-bottom">
+          <div className="price-block">
+            <span className="price">{formatPrice(product.price)}</span>
+            <a className="price-source" href={product.priceSource.url} target="_blank" rel="noreferrer" title={`Reference price from ${product.priceSource.label}`} data-testid={`link-price-source-${product.id}`}>
+              Ref. price · {product.priceSource.asOf} <ExternalLink size={9} />
+            </a>
+          </div>
+          <button className="add-button" onClick={onAdd} aria-label={`Add ${product.name} to cart`} data-testid={`button-add-${product.id}`}><Plus size={17} /></button>
+        </div>
       </div>
     </article>
   );
@@ -397,7 +425,7 @@ function CartDrawer({ cart, changeQuantity, onClose }: { cart: CartLine[]; chang
         <div className="drawer-top"><h2>Your bag <span style={{ color: '#8a9588', font: '12px var(--app-font-mono)' }}>({cart.reduce((sum, line) => sum + line.quantity, 0)})</span></h2><button className="icon-button" onClick={onClose} aria-label="Close cart" data-testid="button-close-cart"><X size={17} /></button></div>
         {cart.length ? <>
           <div className="drawer-items">{cart.map(({ product, quantity }) => <div className="cart-row" key={product.id}>
-            <div className="cart-thumb"><Laptop size={23} strokeWidth={1.3} /></div>
+            <div className="cart-thumb"><ProductVisual product={product} size="thumb" /></div>
             <div><h3>{product.name}</h3><small>{formatPrice(product.price)} each</small><div className="qty-controls"><button onClick={() => changeQuantity(product.id, -1)} aria-label={`Remove one ${product.name}`} data-testid={`button-decrease-${product.id}`}><Minus size={12} /></button><span>{quantity}</span><button onClick={() => changeQuantity(product.id, 1)} aria-label={`Add one ${product.name}`} data-testid={`button-increase-${product.id}`}><Plus size={12} /></button></div></div>
             <div className="cart-row-price">{formatPrice(product.price * quantity)}</div>
           </div>)}</div>
@@ -450,7 +478,7 @@ function Checkout({ cart, clearCart }: { cart: CartLine[]; clearCart: () => void
 }
 
 function formatPrice(value: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value);
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
 }
 
 export default App;

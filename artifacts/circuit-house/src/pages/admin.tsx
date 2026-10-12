@@ -22,8 +22,8 @@ const EMPATHY_STAGES = [
 ] as const;
 
 const EMPATHY_PLACEHOLDERS = [
-  'Facts only. e.g. “The ArcBook Air is $999 and suits coursework.”',
-  'Polite and brief. e.g. “Thanks for the details — the ArcBook Air is the best fit here.”',
+  'Facts only. e.g. “The MacBook Neo is ₹69,900 and suits coursework.”',
+  'Polite and brief. e.g. “Thanks for the details — the MacBook Neo is the best fit here.”',
   'Name their situation once. e.g. “A tight budget makes this choice matter, so let’s get it right…”',
   'Warm and reassuring. e.g. “That’s a smart thing to be careful about — college costs add up…”',
   'Fully attuned. e.g. “I hear you — starting college on a tight budget can feel stressful…”',

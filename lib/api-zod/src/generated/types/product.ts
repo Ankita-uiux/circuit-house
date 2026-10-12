@@ -5,17 +5,25 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PriceSource } from './priceSource';
 
 export interface Product {
   id: string;
   name: string;
+  brand: string;
   category: string;
+  /** Price in Indian rupees (INR). */
   price: number;
   description: string;
-  image: string;
-  rating: number;
-  reviewCount: number;
+  /** Key specifications in plain words, most important first. */
+  specs: string[];
+  /**
+     * Optional photo URL. When null, the storefront shows a brand tile.
+     * @nullable
+     */
+  image: string | null;
   tags: string[];
   /** @nullable */
   badge: string | null;
+  priceSource: PriceSource;
 }

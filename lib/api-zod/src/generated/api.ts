@@ -23,14 +23,19 @@ export const HealthCheckResponse = zod.object({
 export const ListProductsResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "brand": zod.string(),
   "category": zod.string(),
-  "price": zod.number(),
+  "price": zod.number().describe('Price in Indian rupees (INR).'),
   "description": zod.string(),
-  "image": zod.string(),
-  "rating": zod.number(),
-  "reviewCount": zod.number().int(),
+  "specs": zod.array(zod.string()).describe('Key specifications in plain words, most important first.'),
+  "image": zod.string().nullable().describe('Optional photo URL. When null, the storefront shows a brand tile.'),
   "tags": zod.array(zod.string()),
-  "badge": zod.string().nullable()
+  "badge": zod.string().nullable(),
+  "priceSource": zod.object({
+  "label": zod.string(),
+  "url": zod.string(),
+  "asOf": zod.string().describe('Date the price was checked, e.g. "12 Oct 2026".')
+}).describe('Where the listed price came from, so shoppers can check it.')
 })
 export const ListProductsResponse = zod.array(ListProductsResponseItem)
 
@@ -57,14 +62,19 @@ export const GetShoppingAssistantReplyResponse = zod.object({
   "products": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
+  "brand": zod.string(),
   "category": zod.string(),
-  "price": zod.number(),
+  "price": zod.number().describe('Price in Indian rupees (INR).'),
   "description": zod.string(),
-  "image": zod.string(),
-  "rating": zod.number(),
-  "reviewCount": zod.number().int(),
+  "specs": zod.array(zod.string()).describe('Key specifications in plain words, most important first.'),
+  "image": zod.string().nullable().describe('Optional photo URL. When null, the storefront shows a brand tile.'),
   "tags": zod.array(zod.string()),
-  "badge": zod.string().nullable()
+  "badge": zod.string().nullable(),
+  "priceSource": zod.object({
+  "label": zod.string(),
+  "url": zod.string(),
+  "asOf": zod.string().describe('Date the price was checked, e.g. "12 Oct 2026".')
+}).describe('Where the listed price came from, so shoppers can check it.')
 }))
 })
 

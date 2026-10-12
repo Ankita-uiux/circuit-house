@@ -31,11 +31,11 @@ export function empathyStageIndex(scale: number) {
 }
 
 export const DEFAULT_EMPATHY_EXAMPLES = [
-  "The ArcBook Air is $999, has long battery life, and suits coursework. It is the best fit in the catalog for that budget.",
-  "Thanks for the details. For college on a budget, the ArcBook Air at $999 is the strongest fit here: light, long battery life, and enough power for coursework.",
-  "A tight budget makes this choice matter more, so let's get it right. The ArcBook Air at $999 covers everyday coursework and lasts through long days on campus.",
-  "That's a smart thing to be careful about - college costs add up quickly. I'd start with the ArcBook Air: at $999 it handles classes and assignments without making you pay for power you won't use.",
-  "I hear you - starting college on a tight budget can feel stressful, and you deserve a laptop that simply works. The ArcBook Air at $999 is where I'd begin. Would it help if I compared its battery life with the StudioBook for long campus days?",
+  "Within ₹80,000, the MacBook Neo at ₹69,900 is the Mac that fits. It handles Figma and assignments well. For heavier video editing, the HP Victus 15 at ₹96,303 has a dedicated graphics card, but it is over your budget.",
+  "Thanks, that helps. For Figma and some editing within ₹80,000, the MacBook Neo at ₹69,900 is your best fit here. If editing becomes your main work, a laptop with a graphics card like the HP Victus 15 (₹96,303) would make sense, but only if the budget can stretch.",
+  "Makes sense to be careful when it's your parents' money. The MacBook Neo at ₹69,900 stays inside your ₹80,000 and handles Figma and assignments. The HP Victus 15 is better for heavy editing, but it is about ₹16,000 over, so I wouldn't push it.",
+  "That's a responsible way to think about it. A laptop is a big spend for most families. Good news: you don't have to go over budget. The MacBook Neo at ₹69,900 covers Figma and college work comfortably. The HP Victus 15 is built for heavier editing, but at ₹96,303 it's only worth it if editing becomes your main thing.",
+  "I get it. Spending your parents' money on something this big can feel like a lot of pressure, and you want to be sure before you ask them. The MacBook Neo at ₹69,900 fits your budget and handles Figma well. Would it help if I wrote down what you'd gain and give up versus the HP Victus 15 (₹96,303), so you can talk it through with them?",
 ];
 
 export const DEFAULT_ASSISTANT_BEHAVIOR_SETTINGS: AssistantBehaviorSettingsInput = {
@@ -137,7 +137,8 @@ Initiative scale: ${settings.goalOrientationScale}/10. At 0, answer what the sho
 Non-negotiable shopping rules:
 - Help shoppers choose based on their use case, budget, and preferences.
 - Recommend only products whose exact IDs appear in the supplied catalog.
-- Never invent products, prices, features, stock, delivery terms, or warranties.
+- Never invent products, prices, features, stock, delivery terms, or warranties. If a spec the shopper asks about is not in the catalog, say you don't have that detail.
+- Prices are reference prices checked in October 2026, not live prices. If asked about sales, card offers or price drops, say prices change often and suggest checking the retailer.
 - Return a concise reply and 0-3 relevant product IDs.
 - If the shopper's needs are unclear, ask one useful follow-up question.
 - If nothing in the catalog fits, say so and ask whether they want to adjust their needs.
@@ -148,7 +149,8 @@ How to write each reply (it is shown in a narrow chat panel):
 - Keep it short: about 40-120 words.
 - Use short paragraphs of 1-2 sentences, separated by a blank line.
 - When you compare options or list trade-offs, put each one on its own line starting with "- ".
-- Put product names in **double asterisks** so they appear in bold, and write prices like $999.
+- Put product names in **double asterisks** so they appear in bold.
+- Write prices in Indian rupees with Indian digit grouping, like ₹69,900 or ₹1,19,900. Never use dollars.
 - If you ask a question, ask only one, and put it as the last line on its own.
 - Do not use headings, tables, emojis or links.`;
 }
