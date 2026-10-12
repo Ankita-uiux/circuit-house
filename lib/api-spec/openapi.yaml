@@ -187,6 +187,16 @@ components:
         tone:
           type: string
           maxLength: 800
+        initiativeGoal:
+          type: string
+          maxLength: 1200
+        empathyExamples:
+          type: array
+          minItems: 5
+          maxItems: 5
+          items:
+            type: string
+            maxLength: 500
         empathyScale:
           type: integer
           minimum: 0
@@ -198,7 +208,7 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required: [persona, tone, empathyScale, goalOrientationScale, updatedAt]
+      required: [persona, tone, initiativeGoal, empathyExamples, empathyScale, goalOrientationScale, updatedAt]
     AssistantBehaviorSettingsUpdate:
       type: object
       properties:
@@ -210,6 +220,18 @@ components:
           type: string
           minLength: 1
           maxLength: 800
+        initiativeGoal:
+          type: string
+          minLength: 1
+          maxLength: 1200
+        empathyExamples:
+          type: array
+          minItems: 5
+          maxItems: 5
+          items:
+            type: string
+            minLength: 1
+            maxLength: 500
         empathyScale:
           type: integer
           minimum: 0
@@ -218,7 +240,7 @@ components:
           type: integer
           minimum: 0
           maximum: 10
-      required: [persona, tone, empathyScale, goalOrientationScale]
+      required: [persona, tone, initiativeGoal, empathyExamples, empathyScale, goalOrientationScale]
     ShoppingAssistantError:
       type: object
       properties:

@@ -32,9 +32,10 @@ router.put("/shop/assistant/settings", async (req, res): Promise<void> => {
     ...parsed.data,
     persona: parsed.data.persona.trim(),
     tone: parsed.data.tone.trim(),
+    initiativeGoal: parsed.data.initiativeGoal.trim(),
   };
-  if (!settings.persona || !settings.tone) {
-    res.status(400).json({ error: "Persona and tone cannot be blank." });
+  if (!settings.persona || !settings.tone || !settings.initiativeGoal) {
+    res.status(400).json({ error: "Persona, tone, and conversation goal cannot be blank." });
     return;
   }
 

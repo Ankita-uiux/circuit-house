@@ -16,6 +16,7 @@ type SettingsForm = AssistantBehaviorSettingsUpdate;
 const defaults: SettingsForm = {
   persona: '',
   tone: '',
+  initiativeGoal: '',
   empathyScale: 5,
   goalOrientationScale: 5,
 };
@@ -36,6 +37,7 @@ export default function Admin() {
       reset({
         persona: settingsQuery.data.persona,
         tone: settingsQuery.data.tone,
+        initiativeGoal: settingsQuery.data.initiativeGoal,
         empathyScale: settingsQuery.data.empathyScale,
         goalOrientationScale: settingsQuery.data.goalOrientationScale,
       });
@@ -50,6 +52,7 @@ export default function Admin() {
         reset({
           persona: updated.persona,
           tone: updated.tone,
+          initiativeGoal: updated.initiativeGoal,
           empathyScale: updated.empathyScale,
           goalOrientationScale: updated.goalOrientationScale,
         });
@@ -165,11 +168,38 @@ export default function Admin() {
                   <RangeSetting
                     name="goalOrientationScale"
                     control={form.control}
-                    title="Response direction"
-                    detail="How readily it helps narrow options toward a useful next step, without pushing a sale."
+                    title="Initiative"
+                    detail="How actively it guides the shopper toward the conversation goal you define below."
                     low="Passive"
                     high="Goal-oriented"
                     testId="slider-goal-orientation"
+                  />
+                  <FormField
+                    control={form.control}
+                    name="initiativeGoal"
+                    rules={{ required: 'Add a conversation goal before saving.', maxLength: { value: 1200, message: 'Keep the goal under 1,200 characters.' } }}
+                    render={({ field, fieldState }) => (
+                      <FormItem className="admin-goal-field">
+                        <div className="admin-field-label-line">
+                          <FormLabel className="admin-field-label">Conversation goal</FormLabel>
+                          <span className="admin-char-count">{field.value.length} / 1,200</span>
+                        </div>
+                        <FormControl>
+                          <textarea
+                            {...field}
+                            className="admin-textarea admin-goal-textarea"
+                            rows={3}
+                            maxLength={1200}
+                            placeholder="Describe what you want the assistant to help shoppers accomplish."
+                            aria-label="Assistant conversation goal"
+                            data-testid="input-assistant-initiative-goal"
+                          />
+                        </FormControl>
+                        <div className="admin-field-foot">
+                          <span>{fieldState.error?.message ?? 'The initiative score controls how actively the assistant works toward this goal.'}</span>
+                        </div>
+                      </FormItem>
+                    )}
                   />
                 </div>
                 <div className="admin-range-note"><span>Both scales run from 0 to 10.</span><span>Settings guide behavior; product recommendations remain grounded in the catalog.</span></div>

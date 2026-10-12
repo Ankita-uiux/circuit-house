@@ -402,3 +402,9 @@
   .admin-error > div:nth-child(2) { flex:1;min-width:180px; }
   .admin-retry { margin-left:57px; }
 }
+
+.admin-goal-field { padding:18px 0 20px;border-top:1px solid #e9e5da; }
+.admin-goal-textarea { min-height:92px; }
+@media (max-width:680px) {
+  .admin-goal-field { padding:16px 0 18px; }
+}

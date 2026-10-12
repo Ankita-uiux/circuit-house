@@ -18,6 +18,18 @@ export interface AssistantBehaviorSettingsUpdate {
      */
   tone: string;
   /**
+     * @minLength 1
+     * @maxLength 1200
+     */
+  initiativeGoal: string;
+  /**
+     * @minItems 5
+     * @maxItems 5
+     * @items.minLength 1
+     * @items.maxLength 500
+     */
+  empathyExamples: string[];
+  /**
      * @minimum 0
      * @maximum 10
      */

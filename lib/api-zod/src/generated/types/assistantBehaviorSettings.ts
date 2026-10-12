@@ -11,6 +11,14 @@ export interface AssistantBehaviorSettings {
   persona: string;
   /** @maxLength 800 */
   tone: string;
+  /** @maxLength 1200 */
+  initiativeGoal: string;
+  /**
+     * @minItems 5
+     * @maxItems 5
+     * @items.maxLength 500
+     */
+  empathyExamples: string[];
   /**
      * @minimum 0
      * @maximum 10

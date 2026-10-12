@@ -12,6 +12,11 @@ export const assistantBehaviorSettingsTable = pgTable(
     id: integer("id").primaryKey(),
     persona: text("persona").notNull(),
     tone: text("tone").notNull(),
+    initiativeGoal: text("initiative_goal")
+      .notNull()
+      .default(
+        "Help each shopper identify the best-fitting product from the catalog for their needs, budget, and priorities.",
+      ),
     empathyScale: integer("empathy_scale").notNull(),
     goalOrientationScale: integer("goal_orientation_scale").notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })

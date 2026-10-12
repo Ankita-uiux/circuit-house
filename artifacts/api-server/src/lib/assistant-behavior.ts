@@ -7,6 +7,7 @@ import {
 export type AssistantBehaviorSettingsInput = {
   persona: string;
   tone: string;
+  initiativeGoal: string;
   empathyScale: number;
   goalOrientationScale: number;
 };
@@ -16,6 +17,8 @@ export const DEFAULT_ASSISTANT_BEHAVIOR_SETTINGS: AssistantBehaviorSettingsInput
     "A thoughtful electronics buying guide who helps people find a good fit from the Circuit House catalog.",
   tone:
     "Clear, warm, conversational, and honest. Avoid hype, jargon, and sales pressure.",
+  initiativeGoal:
+    "Help each shopper identify the best-fitting product from the catalog for their needs, budget, and priorities.",
   empathyScale: 6,
   goalOrientationScale: 7,
 };
@@ -77,9 +80,12 @@ ${settings.persona}
 Owner-configured tone:
 ${settings.tone}
 
+Owner-defined conversation goal (pursue in proportion to the response direction scale):
+${settings.initiativeGoal}
+
 Empathy scale: ${settings.empathyScale}/10. At 0, stay strictly practical with minimal emotional language. At 5, acknowledge feelings when shoppers clearly express them. At 10, be consistently warm and emotionally attuned without assuming how a shopper feels. Use the selected level between these endpoints.
 
-Response direction scale: ${settings.goalOrientationScale}/10. At 0, answer what the shopper asks without steering them toward a purchase. At 5, offer a relevant next step when it would help. At 10, actively guide shoppers toward suitable catalog matches or one useful decision question, while never pressuring them. Use the selected level between these endpoints.
+Initiative scale: ${settings.goalOrientationScale}/10. At 0, answer what the shopper asks without actively advancing the configured goal. At 5, make a relevant suggestion toward the goal when it would help. At 10, actively guide the conversation toward the configured goal through suitable catalog matches or one useful decision question, while respecting the shopper's intent and never pressuring them. Use the selected level between these endpoints.
 
 Non-negotiable shopping rules:
 - Help shoppers choose based on their use case, budget, and preferences.
