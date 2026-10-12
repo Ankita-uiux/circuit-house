@@ -38,7 +38,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- After pulling schema changes (e.g. the `empathy_examples` column), run `pnpm --filter @workspace/db run push` before starting the API server. Rows saved before that column existed fall back to the default empathy examples until an admin saves new ones.
 
 ## Pointers
 

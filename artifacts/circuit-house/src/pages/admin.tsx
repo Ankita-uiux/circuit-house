@@ -13,10 +13,43 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/
 
 type SettingsForm = AssistantBehaviorSettingsUpdate;
 
+const EMPATHY_STAGES = [
+  { name: 'Practical', range: '0–1' },
+  { name: 'Courteous', range: '2–3' },
+  { name: 'Acknowledging', range: '4–6' },
+  { name: 'Warm', range: '7–8' },
+  { name: 'Deeply attuned', range: '9–10' },
+] as const;
+
+const EMPATHY_PLACEHOLDERS = [
+  'Facts only. e.g. “The ArcBook Air is $999 and suits coursework.”',
+  'Polite and brief. e.g. “Thanks for the details — the ArcBook Air is the best fit here.”',
+  'Name their situation once. e.g. “A tight budget makes this choice matter, so let’s get it right…”',
+  'Warm and reassuring. e.g. “That’s a smart thing to be careful about — college costs add up…”',
+  'Fully attuned. e.g. “I hear you — starting college on a tight budget can feel stressful…”',
+] as const;
+
+/** Same banding as the server: maps a 0–10 score to stage 0–4. */
+function empathyStageIndex(scale: number) {
+  return Math.min(4, Math.max(0, Math.round(scale / 2.5)));
+}
+
+function toFormValues(data: SettingsForm): SettingsForm {
+  return {
+    persona: data.persona,
+    tone: data.tone,
+    initiativeGoal: data.initiativeGoal,
+    empathyExamples: [...data.empathyExamples],
+    empathyScale: data.empathyScale,
+    goalOrientationScale: data.goalOrientationScale,
+  };
+}
+
 const defaults: SettingsForm = {
   persona: '',
   tone: '',
   initiativeGoal: '',
+  empathyExamples: ['', '', '', '', ''],
   empathyScale: 5,
   goalOrientationScale: 5,
 };
@@ -34,13 +67,7 @@ export default function Admin() {
 
   useEffect(() => {
     if (settingsQuery.data) {
-      reset({
-        persona: settingsQuery.data.persona,
-        tone: settingsQuery.data.tone,
-        initiativeGoal: settingsQuery.data.initiativeGoal,
-        empathyScale: settingsQuery.data.empathyScale,
-        goalOrientationScale: settingsQuery.data.goalOrientationScale,
-      });
+      reset(toFormValues(settingsQuery.data));
     }
   }, [settingsQuery.data, reset]);
 
@@ -49,13 +76,7 @@ export default function Admin() {
     setSaved(false);
     saveSettings.mutate({ data: values }, {
       onSuccess: (updated) => {
-        reset({
-          persona: updated.persona,
-          tone: updated.tone,
-          initiativeGoal: updated.initiativeGoal,
-          empathyScale: updated.empathyScale,
-          goalOrientationScale: updated.goalOrientationScale,
-        });
+        reset(toFormValues(updated));
         setSaved(true);
         void queryClient.invalidateQueries({ queryKey: getGetAssistantBehaviorSettingsQueryKey() });
       },
@@ -165,6 +186,7 @@ export default function Admin() {
                     high="Highly considerate"
                     testId="slider-empathy"
                   />
+                  <EmpathyExamples control={form.control} activeStage={empathyStageIndex(Number(form.watch('empathyScale')))} />
                   <RangeSetting
                     name="goalOrientationScale"
                     control={form.control}
@@ -223,6 +245,66 @@ export default function Admin() {
 
         <footer className="admin-footer"><span>Thoughtful tech. Clear answers.</span><span>Assistant controls <i>·</i> Circuit House</span></footer>
       </main>
+    </div>
+  );
+}
+
+function EmpathyExamples({
+  control, activeStage,
+}: {
+  control: ReturnType<typeof useForm<SettingsForm>>['control'];
+  activeStage: number;
+}) {
+  return (
+    <div className="empathy-examples" role="group" aria-labelledby="empathy-examples-title" data-testid="group-empathy-examples">
+      <div className="empathy-examples-head">
+        <span className="admin-field-label" id="empathy-examples-title">Empathy examples</span>
+        <p>Write how the assistant should reply at each stage of the scale. It uses the stage your slider is on and the ones around it to judge how warm to sound. Tip: picture one shopper message — e.g. “I need a laptop for college but my budget is tight” — and answer it five ways.</p>
+      </div>
+      <ol className="empathy-stage-list">
+        {EMPATHY_STAGES.map((stage, index) => (
+          <FormField
+            key={stage.name}
+            control={control}
+            name={`empathyExamples.${index}`}
+            rules={{
+              validate: (value) => value.trim().length > 0 || `Add an example for ${stage.name.toLowerCase()}.`,
+              maxLength: { value: 500, message: 'Keep each example under 500 characters.' },
+            }}
+            render={({ field, fieldState }) => (
+              <li className={`empathy-stage${index === activeStage ? ' is-active' : ''}`} data-testid={`empathy-stage-${index + 1}`}>
+                <FormItem className="empathy-stage-item">
+                  <div className="empathy-stage-meta">
+                    <span className="empathy-stage-number">{String(index + 1).padStart(2, '0')}</span>
+                    <div>
+                      <FormLabel className="empathy-stage-name">{stage.name}</FormLabel>
+                      <span className="empathy-stage-range">Levels {stage.range}</span>
+                    </div>
+                    {index === activeStage && <span className="empathy-stage-current" data-testid="text-empathy-current-stage">In use</span>}
+                  </div>
+                  <div className="empathy-stage-input">
+                    <FormControl>
+                      <textarea
+                        {...field}
+                        className="admin-textarea empathy-stage-textarea"
+                        rows={2}
+                        maxLength={500}
+                        placeholder={EMPATHY_PLACEHOLDERS[index]}
+                        aria-label={`Empathy example, stage ${index + 1}: ${stage.name}`}
+                        data-testid={`input-empathy-example-${index + 1}`}
+                      />
+                    </FormControl>
+                    <div className="empathy-stage-foot">
+                      <span className={fieldState.error ? 'empathy-stage-error' : undefined}>{fieldState.error?.message ?? ''}</span>
+                      <span className="admin-char-count">{field.value.length} / 500</span>
+                    </div>
+                  </div>
+                </FormItem>
+              </li>
+            )}
+          />
+        ))}
+      </ol>
     </div>
   );
 }

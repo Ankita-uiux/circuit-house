@@ -33,9 +33,14 @@ router.put("/shop/assistant/settings", async (req, res): Promise<void> => {
     persona: parsed.data.persona.trim(),
     tone: parsed.data.tone.trim(),
     initiativeGoal: parsed.data.initiativeGoal.trim(),
+    empathyExamples: parsed.data.empathyExamples.map((example) => example.trim()),
   };
   if (!settings.persona || !settings.tone || !settings.initiativeGoal) {
     res.status(400).json({ error: "Persona, tone, and conversation goal cannot be blank." });
+    return;
+  }
+  if (settings.empathyExamples.some((example) => !example)) {
+    res.status(400).json({ error: "All five empathy examples need some text." });
     return;
   }
 

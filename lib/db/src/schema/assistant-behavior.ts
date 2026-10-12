@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   integer,
   pgTable,
@@ -17,6 +18,12 @@ export const assistantBehaviorSettingsTable = pgTable(
       .default(
         "Help each shopper identify the best-fitting product from the catalog for their needs, budget, and priorities.",
       ),
+    // Five owner-written example replies, one per empathy stage
+    // (levels 0, 2-3, 5, 7-8, 10). An empty array means "use the defaults".
+    empathyExamples: text("empathy_examples")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     empathyScale: integer("empathy_scale").notNull(),
     goalOrientationScale: integer("goal_orientation_scale").notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
