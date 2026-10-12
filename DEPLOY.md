@@ -17,7 +17,7 @@ The whole app runs as one free Render web service: the Express API serves both `
    - `ADMIN_PASSWORD` — the password for the `/admin` page. Share it only with teammates.
 4. Deploy. The first build takes a few minutes. Your store is at `https://<service-name>.onrender.com` and the settings page at `/admin`.
 
-The build (`scripts/render-build.sh`) creates the database tables automatically.
+The server creates its database table automatically the first time it starts.
 
 ## Things to know
 

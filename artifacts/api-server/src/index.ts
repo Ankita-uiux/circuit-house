@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { ensureSchema } from "./lib/ensure-schema";
 
 const rawPort = process.env["PORT"];
 
@@ -13,6 +14,16 @@ const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
+}
+
+try {
+  await ensureSchema();
+} catch (err) {
+  logger.error(
+    { err },
+    "Could not prepare the database. Check that DATABASE_URL is correct and the database is reachable.",
+  );
+  process.exit(1);
 }
 
 app.listen(port, (err) => {
