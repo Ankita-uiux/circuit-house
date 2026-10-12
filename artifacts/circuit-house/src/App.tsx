@@ -7,6 +7,7 @@ import type { Product, ShoppingAssistantTurn } from '@workspace/api-client-react
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import AdminPage from '@/pages/admin';
 import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient();
@@ -57,6 +58,9 @@ function App() {
               </Route>
               <Route path="/checkout">
                 <Checkout cart={cart} clearCart={clearCart} />
+              </Route>
+              <Route path="/admin">
+                <AdminPage />
               </Route>
               <Route component={NotFound} />
             </Switch>

@@ -51,6 +51,47 @@ export interface ShoppingAssistantReply {
   products: Product[];
 }
 
+export interface AssistantBehaviorSettings {
+  /** @maxLength 1200 */
+  persona: string;
+  /** @maxLength 800 */
+  tone: string;
+  /**
+     * @minimum 0
+     * @maximum 10
+     */
+  empathyScale: number;
+  /**
+     * @minimum 0
+     * @maximum 10
+     */
+  goalOrientationScale: number;
+  updatedAt: string;
+}
+
+export interface AssistantBehaviorSettingsUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 1200
+     */
+  persona: string;
+  /**
+     * @minLength 1
+     * @maxLength 800
+     */
+  tone: string;
+  /**
+     * @minimum 0
+     * @maximum 10
+     */
+  empathyScale: number;
+  /**
+     * @minimum 0
+     * @maximum 10
+     */
+  goalOrientationScale: number;
+}
+
 export interface ShoppingAssistantError {
   error: string;
 }

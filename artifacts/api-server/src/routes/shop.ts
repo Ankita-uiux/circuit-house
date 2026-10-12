@@ -5,6 +5,10 @@ import {
   ListProductsResponse,
 } from "@workspace/api-zod";
 import OpenAI from "openai";
+import {
+  buildAssistantSystemPrompt,
+  getAssistantBehaviorSettings,
+} from "../lib/assistant-behavior";
 
 const router: IRouter = Router();
 
@@ -148,6 +152,7 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
   try {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const { message, history } = parsed.data;
+    const behaviorSettings = await getAssistantBehaviorSettings();
     const catalog = products.map(
       ({ id, name, category, price, description, tags }) => ({
         id,
@@ -183,8 +188,7 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
       messages: [
         {
           role: "system",
-          content:
-            "You are the Circuit House electronics shopping assistant. Help shoppers choose from the supplied catalog using their use case, budget, and preferences. Recommend only products whose exact IDs appear in the catalog; never invent products, prices, features, stock, delivery terms, or warranties. Return a concise, friendly reply and 0-3 relevant product IDs. If the shopper's needs are unclear, ask one useful follow-up question. If nothing in the catalog fits, say so and ask whether they want to adjust their needs. This storefront has demo checkout only; never claim an order or payment has been made.",
+          content: buildAssistantSystemPrompt(behaviorSettings),
         },
         ...history.slice(-10).map((turn) => ({
           role: turn.role as "user" | "assistant",

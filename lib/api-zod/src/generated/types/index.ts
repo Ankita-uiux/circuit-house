@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './assistantBehaviorSettings';
+export * from './assistantBehaviorSettingsUpdate';
 export * from './healthStatus';
 export * from './product';
 export * from './shoppingAssistantError';

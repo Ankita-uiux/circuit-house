@@ -20,6 +20,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AssistantBehaviorSettings,
+  AssistantBehaviorSettingsUpdate,
   HealthStatus,
   Product,
   ShoppingAssistantError,
@@ -295,5 +297,170 @@ export const useGetShoppingAssistantReply = <TError = ErrorType<ShoppingAssistan
         TContext
       > => {
       return useMutation(getGetShoppingAssistantReplyMutationOptions(options));
+    }
+
+export const getGetAssistantBehaviorSettingsUrl = () => {
+
+
+
+
+  return `/api/shop/assistant/settings`
+}
+
+/**
+ * @summary Get the saved shopping assistant behavior settings
+ */
+export const getAssistantBehaviorSettings = async ( options?: Parameters<typeof customFetch>[1]): Promise<AssistantBehaviorSettings> => {
+
+  return customFetch<AssistantBehaviorSettings>(getGetAssistantBehaviorSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAssistantBehaviorSettingsQueryKey = () => {
+    return [
+    `/api/shop/assistant/settings`
+    ] as const;
+    }
+
+
+export const getGetAssistantBehaviorSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getAssistantBehaviorSettings>>, TError = ErrorType<ShoppingAssistantError>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAssistantBehaviorSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAssistantBehaviorSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAssistantBehaviorSettings>>> = ({ signal }) => getAssistantBehaviorSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAssistantBehaviorSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAssistantBehaviorSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getAssistantBehaviorSettings>>>
+export type GetAssistantBehaviorSettingsQueryError = ErrorType<ShoppingAssistantError>
+
+
+/**
+ * @summary Get the saved shopping assistant behavior settings
+ */
+
+export function useGetAssistantBehaviorSettings<TData = Awaited<ReturnType<typeof getAssistantBehaviorSettings>>, TError = ErrorType<ShoppingAssistantError>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAssistantBehaviorSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAssistantBehaviorSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAssistantBehaviorSettingsUrl = () => {
+
+
+
+
+  return `/api/shop/assistant/settings`
+}
+
+/**
+ * @summary Save the shopping assistant behavior settings
+ */
+export const updateAssistantBehaviorSettings = async (assistantBehaviorSettingsUpdate: AssistantBehaviorSettingsUpdate, options?: Parameters<typeof customFetch>[1]): Promise<AssistantBehaviorSettings> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<AssistantBehaviorSettings>(getUpdateAssistantBehaviorSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(assistantBehaviorSettingsUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAssistantBehaviorSettingsMutationKey = () => ['updateAssistantBehaviorSettings'] as const;
+
+export const getUpdateAssistantBehaviorSettingsMutationOptions = <TError = ErrorType<ShoppingAssistantError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAssistantBehaviorSettings>>, TError,UpdateAssistantBehaviorSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAssistantBehaviorSettings>>, TError,UpdateAssistantBehaviorSettingsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAssistantBehaviorSettingsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAssistantBehaviorSettings>>, UpdateAssistantBehaviorSettingsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateAssistantBehaviorSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAssistantBehaviorSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateAssistantBehaviorSettings>>>
+    export type UpdateAssistantBehaviorSettingsMutationBody = BodyType<AssistantBehaviorSettingsUpdate>
+    export type UpdateAssistantBehaviorSettingsMutationError = ErrorType<ShoppingAssistantError>
+    export type UpdateAssistantBehaviorSettingsMutationVariables = {data: BodyType<AssistantBehaviorSettingsUpdate>}
+
+    /**
+ * @summary Save the shopping assistant behavior settings
+ */
+export const useUpdateAssistantBehaviorSettings = <TError = ErrorType<ShoppingAssistantError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAssistantBehaviorSettings>>, TError,UpdateAssistantBehaviorSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAssistantBehaviorSettings>>,
+        TError,
+        UpdateAssistantBehaviorSettingsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAssistantBehaviorSettingsMutationOptions(options));
     }
 

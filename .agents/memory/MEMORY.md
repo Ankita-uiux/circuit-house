@@ -1,0 +1,1 @@
+- [Admin access](admin-access.md) — `/admin` intentionally has no login; keep the public-access warning visible.

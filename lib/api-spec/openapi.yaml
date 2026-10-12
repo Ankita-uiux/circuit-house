@@ -64,6 +64,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ShoppingAssistantError"
+  /shop/assistant/settings:
+    get:
+      operationId: getAssistantBehaviorSettings
+      tags: [shop]
+      summary: Get the saved shopping assistant behavior settings
+      responses:
+        "200":
+          description: Current assistant behavior settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantBehaviorSettings"
+        "500":
+          description: Assistant settings could not be loaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShoppingAssistantError"
+    put:
+      operationId: updateAssistantBehaviorSettings
+      tags: [shop]
+      summary: Save the shopping assistant behavior settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssistantBehaviorSettingsUpdate"
+      responses:
+        "200":
+          description: Saved assistant behavior settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantBehaviorSettings"
+        "400":
+          description: Invalid assistant settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShoppingAssistantError"
+        "500":
+          description: Assistant settings could not be saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShoppingAssistantError"
 components:
   schemas:
     HealthStatus:
@@ -131,6 +178,47 @@ components:
           items:
             $ref: "#/components/schemas/Product"
       required: [reply, products]
+    AssistantBehaviorSettings:
+      type: object
+      properties:
+        persona:
+          type: string
+          maxLength: 1200
+        tone:
+          type: string
+          maxLength: 800
+        empathyScale:
+          type: integer
+          minimum: 0
+          maximum: 10
+        goalOrientationScale:
+          type: integer
+          minimum: 0
+          maximum: 10
+        updatedAt:
+          type: string
+          format: date-time
+      required: [persona, tone, empathyScale, goalOrientationScale, updatedAt]
+    AssistantBehaviorSettingsUpdate:
+      type: object
+      properties:
+        persona:
+          type: string
+          minLength: 1
+          maxLength: 1200
+        tone:
+          type: string
+          minLength: 1
+          maxLength: 800
+        empathyScale:
+          type: integer
+          minimum: 0
+          maximum: 10
+        goalOrientationScale:
+          type: integer
+          minimum: 0
+          maximum: 10
+      required: [persona, tone, empathyScale, goalOrientationScale]
     ShoppingAssistantError:
       type: object
       properties:

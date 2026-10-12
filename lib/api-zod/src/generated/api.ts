@@ -69,3 +69,70 @@ export const GetShoppingAssistantReplyResponse = zod.object({
 })
 
 
+/**
+ * @summary Get the saved shopping assistant behavior settings
+ */
+export const getAssistantBehaviorSettingsResponsePersonaMax = 1200;
+
+export const getAssistantBehaviorSettingsResponseToneMax = 800;
+
+export const getAssistantBehaviorSettingsResponseEmpathyScaleMin = 0;
+export const getAssistantBehaviorSettingsResponseEmpathyScaleMax = 10;
+
+export const getAssistantBehaviorSettingsResponseGoalOrientationScaleMin = 0;
+export const getAssistantBehaviorSettingsResponseGoalOrientationScaleMax = 10;
+
+
+
+export const GetAssistantBehaviorSettingsResponse = zod.object({
+  "persona": zod.string().max(getAssistantBehaviorSettingsResponsePersonaMax),
+  "tone": zod.string().max(getAssistantBehaviorSettingsResponseToneMax),
+  "empathyScale": zod.number().int().min(getAssistantBehaviorSettingsResponseEmpathyScaleMin).max(getAssistantBehaviorSettingsResponseEmpathyScaleMax),
+  "goalOrientationScale": zod.number().int().min(getAssistantBehaviorSettingsResponseGoalOrientationScaleMin).max(getAssistantBehaviorSettingsResponseGoalOrientationScaleMax),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Save the shopping assistant behavior settings
+ */
+export const updateAssistantBehaviorSettingsBodyPersonaMax = 1200;
+
+export const updateAssistantBehaviorSettingsBodyToneMax = 800;
+
+export const updateAssistantBehaviorSettingsBodyEmpathyScaleMin = 0;
+export const updateAssistantBehaviorSettingsBodyEmpathyScaleMax = 10;
+
+export const updateAssistantBehaviorSettingsBodyGoalOrientationScaleMin = 0;
+export const updateAssistantBehaviorSettingsBodyGoalOrientationScaleMax = 10;
+
+
+
+export const UpdateAssistantBehaviorSettingsBody = zod.object({
+  "persona": zod.string().min(1).max(updateAssistantBehaviorSettingsBodyPersonaMax),
+  "tone": zod.string().min(1).max(updateAssistantBehaviorSettingsBodyToneMax),
+  "empathyScale": zod.number().int().min(updateAssistantBehaviorSettingsBodyEmpathyScaleMin).max(updateAssistantBehaviorSettingsBodyEmpathyScaleMax),
+  "goalOrientationScale": zod.number().int().min(updateAssistantBehaviorSettingsBodyGoalOrientationScaleMin).max(updateAssistantBehaviorSettingsBodyGoalOrientationScaleMax)
+})
+
+export const updateAssistantBehaviorSettingsResponsePersonaMax = 1200;
+
+export const updateAssistantBehaviorSettingsResponseToneMax = 800;
+
+export const updateAssistantBehaviorSettingsResponseEmpathyScaleMin = 0;
+export const updateAssistantBehaviorSettingsResponseEmpathyScaleMax = 10;
+
+export const updateAssistantBehaviorSettingsResponseGoalOrientationScaleMin = 0;
+export const updateAssistantBehaviorSettingsResponseGoalOrientationScaleMax = 10;
+
+
+
+export const UpdateAssistantBehaviorSettingsResponse = zod.object({
+  "persona": zod.string().max(updateAssistantBehaviorSettingsResponsePersonaMax),
+  "tone": zod.string().max(updateAssistantBehaviorSettingsResponseToneMax),
+  "empathyScale": zod.number().int().min(updateAssistantBehaviorSettingsResponseEmpathyScaleMin).max(updateAssistantBehaviorSettingsResponseEmpathyScaleMax),
+  "goalOrientationScale": zod.number().int().min(updateAssistantBehaviorSettingsResponseGoalOrientationScaleMin).max(updateAssistantBehaviorSettingsResponseGoalOrientationScaleMax),
+  "updatedAt": zod.coerce.date()
+})
+
+
