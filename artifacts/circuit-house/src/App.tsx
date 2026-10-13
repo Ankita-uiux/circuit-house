@@ -765,17 +765,7 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
 function ProductVisual({ product, size = 'card' }: { product: Product; size?: 'card' | 'thumb' }) {
   const [imageFailed, setImageFailed] = useState(false);
   if (product.image && !imageFailed) {
-    const credit = product.imageCredit;
-    return (
-      <>
-        <img src={product.image} alt={product.name} loading="lazy" decoding="async" onError={() => setImageFailed(true)} data-testid={`img-product-${product.id}`} />
-        {credit && size === 'card' && (
-          <a className="cx-photo-credit" href={credit.sourceUrl} target="_blank" rel="noreferrer" title={`Photo: ${credit.author}, ${credit.license}, via Wikimedia Commons`} data-testid={`link-photo-credit-${product.id}`}>
-            Photo: {credit.author} · {credit.license}
-          </a>
-        )}
-      </>
-    );
+    return <img src={product.image} alt={product.name} onError={() => setImageFailed(true)} data-testid={`img-product-${product.id}`} />;
   }
   const Icon = CATEGORY_ICONS[product.category] ?? ShoppingBag;
   return (

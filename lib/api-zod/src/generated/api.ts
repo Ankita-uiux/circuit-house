@@ -29,11 +29,6 @@ export const ListProductsResponseItem = zod.object({
   "description": zod.string(),
   "specs": zod.array(zod.string()).describe('Key specifications in plain words, most important first.'),
   "image": zod.string().nullable().describe('Optional photo URL. When null, the storefront shows a brand tile.'),
-  "imageCredit": zod.union([zod.object({
-  "author": zod.string(),
-  "license": zod.string(),
-  "sourceUrl": zod.string()
-}),zod.null()]).optional().describe('Who took the photo and its licence, when the photo needs credit.'),
   "tags": zod.array(zod.string()),
   "badge": zod.string().nullable(),
   "priceSource": zod.object({
@@ -73,11 +68,6 @@ export const GetShoppingAssistantReplyResponse = zod.object({
   "description": zod.string(),
   "specs": zod.array(zod.string()).describe('Key specifications in plain words, most important first.'),
   "image": zod.string().nullable().describe('Optional photo URL. When null, the storefront shows a brand tile.'),
-  "imageCredit": zod.union([zod.object({
-  "author": zod.string(),
-  "license": zod.string(),
-  "sourceUrl": zod.string()
-}),zod.null()]).optional().describe('Who took the photo and its licence, when the photo needs credit.'),
   "tags": zod.array(zod.string()),
   "badge": zod.string().nullable(),
   "priceSource": zod.object({
