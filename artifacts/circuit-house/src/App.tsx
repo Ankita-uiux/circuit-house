@@ -6,6 +6,7 @@ import { getListProductsQueryKey, useGetShoppingAssistantReply, useListProducts 
 import type { Product, ShoppingAssistantTurn } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { useToast } from '@/hooks/use-toast';
+import { ChatArt, FestiveArt, LaptopArt, PhonesArt } from './banners';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import AdminPage from '@/pages/admin';
@@ -156,7 +157,7 @@ function Header({
   );
 }
 
-type Slide = { id: string; kicker: string; title: string; text: string; cta: string; tone: string; icon: LucideIcon; action: () => void };
+type Slide = { id: string; kicker: string; title: ReactNode; text: string; cta: string; tone: string; action: () => void; chips?: string[]; art?: ReactNode; finePrint?: string };
 
 function HeroCarousel({ slides }: { slides: Slide[] }) {
   const [index, setIndex] = useState(0);
@@ -169,7 +170,6 @@ function HeroCarousel({ slides }: { slides: Slide[] }) {
   }, [paused, slides.length]);
   if (!slides.length) return null;
   const slide = slides[index % slides.length];
-  const Icon = slide.icon;
   const go = (step: number) => setIndex((current) => (current + step + slides.length) % slides.length);
   return (
     <section className="cx-hero" aria-roledescription="carousel" aria-label="Featured" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
@@ -178,9 +178,11 @@ function HeroCarousel({ slides }: { slides: Slide[] }) {
           <span className="cx-slide-kicker">{slide.kicker}</span>
           <h1>{slide.title}</h1>
           <p>{slide.text}</p>
+          {slide.chips && <ul className="cx-slide-chips">{slide.chips.map((chip) => <li key={chip}>{chip}</li>)}</ul>}
           <button type="button" className="cx-slide-cta" onClick={slide.action} data-testid={`button-hero-${slide.id}`}>{slide.cta} <ArrowRight size={16} /></button>
         </div>
-        <div className="cx-slide-art" aria-hidden="true"><span className="cx-slide-ring" /><Icon strokeWidth={1.1} /></div>
+        {slide.art && <div className="cx-slide-art" aria-hidden="true">{slide.art}</div>}
+        {slide.finePrint && <span className="cx-slide-fine">{slide.finePrint}</span>}
       </div>
       <button type="button" className="cx-hero-arrow cx-hero-prev" onClick={() => go(-1)} aria-label="Previous offer"><ChevronLeft size={20} /></button>
       <button type="button" className="cx-hero-arrow cx-hero-next" onClick={() => go(1)} aria-label="Next offer"><ChevronRight size={20} /></button>
@@ -316,25 +318,51 @@ function Home({
     };
   }, [products]);
 
-  const lowest = rows.laptops[0]?.price;
+  const minIn = (list: Product[]) => (list.length ? Math.min(...list.map((product) => product.price)) : null);
+  const priceOf = (id: string) => products.find((product) => product.id === id)?.price;
+  const fromText = (value: number | null | undefined) => (value ? formatPrice(value) : '');
+  const laptopFrom = minIn(rows.laptops);
+  const phones20k = products.filter((product) => product.category === 'Phones' && product.price < 20000);
+  const phoneFrom = minIn(phones20k);
+  const earbudsFrom = minIn(products.filter((product) => product.category === 'Audio' && product.tags.includes('earbuds')));
+  const neoPrice = priceOf('macbook-neo');
+  const loqPrice = priceOf('lenovo-loq-rtx5060');
+  const maxBattery = Math.max(0, ...phones20k.map((product) => Number(product.specs.join(' ').match(/(\d{4,5})mAh/)?.[1] ?? 0)));
+  const fine = '*Reference prices from Indian retailers, checked Oct 2026';
+
   const slides: Slide[] = [
     {
-      id: 'laptops', tone: 'teal', icon: Laptop, kicker: 'Back to college',
-      title: 'Laptops for every course',
-      text: `${lowest ? `From ${formatPrice(lowest)}. ` : ''}MacBook, ASUS, HP, Lenovo and Acer, compared by what you’ll actually do on them.`,
-      cta: 'Shop laptops', action: () => showCategory('Laptops'),
+      id: 'fest', tone: 'festive', kicker: 'Festive Tech Fest',
+      title: <>Light up Diwali<br />with new tech</>,
+      text: 'Laptops, phones and earbuds for college and home, compared honestly.',
+      chips: [laptopFrom ? `Laptops from ${fromText(laptopFrom)}*` : '', phoneFrom ? `5G phones from ${fromText(phoneFrom)}*` : '', earbudsFrom ? `Earbuds from ${fromText(earbudsFrom)}*` : ''].filter(Boolean),
+      cta: 'Shop the fest', action: goToCatalog, art: <FestiveArt />, finePrint: fine,
     },
     {
-      id: 'phones', tone: 'violet', icon: Smartphone, kicker: 'Smart buys',
-      title: 'Phones under ₹30,000',
-      text: 'Redmi, POCO, Samsung and CMF picks with big batteries and AMOLED screens.',
-      cta: 'See phones', action: () => goToRow('phones'),
+      id: 'laptops', tone: 'teal', kicker: 'Back to college',
+      title: <>Laptops for<br />every course</>,
+      text: 'Coding, design or video editing: pick by what you’ll actually do on it.',
+      chips: [
+        laptopFrom ? `16GB RAM from ${fromText(laptopFrom)}*` : '',
+        neoPrice ? `MacBook Neo ${fromText(neoPrice)}*` : '',
+        loqPrice ? `RTX 5060 gaming ${fromText(loqPrice)}*` : '',
+      ].filter(Boolean),
+      cta: 'Shop laptops', action: () => showCategory('Laptops'), art: <LaptopArt />, finePrint: fine,
     },
     {
-      id: 'copilot', tone: 'amber', icon: Sparkles, kicker: 'New · AI shopping copilot',
-      title: 'Not sure what to buy? Ask Circuit.',
+      id: 'phones', tone: 'violet', kicker: 'Smart buys',
+      title: <>5G phones<br />under ₹20,000</>,
+      text: 'Samsung, POCO, iQOO, Motorola and more, all with 5000mAh or bigger batteries.',
+      chips: [phoneFrom ? `From ${fromText(phoneFrom)}*` : '', maxBattery ? `Up to ${maxBattery.toLocaleString('en-IN')}mAh battery` : '', '120Hz screens available'].filter(Boolean),
+      cta: 'See phones', action: () => goToRow('phones'), art: <PhonesArt />, finePrint: fine,
+    },
+    {
+      id: 'copilot', tone: 'navy', kicker: 'New · AI shopping copilot',
+      title: <>Not sure what to buy?<br />Ask Circuit.</>,
       text: 'Tell it what you’ll use it for and your budget. It suggests options from our catalog and explains the trade-offs.',
+      chips: ['No upsell', 'Plain-language answers', 'Only products we stock'],
       cta: 'Ask Circuit', action: () => setAssistantOpen(true),
+      art: <ChatArt productName="MacBook Neo" price={fromText(neoPrice) || '₹69,900'} />,
     },
   ];
 
