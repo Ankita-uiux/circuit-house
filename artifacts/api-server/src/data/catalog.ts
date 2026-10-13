@@ -6,9 +6,10 @@
  * They change often (sales, card offers), so the storefront labels them as
  * reference prices and the assistant never claims they are live.
  *
- * `image` is null for every product: freely licensed photos could not be
- * verified when this list was made, so the storefront shows a brand tile.
- * To add a photo, set `image` to a URL you have the right to use.
+ * `image` is null in this file. Products with an `icecat` product code get an
+ * official photo from Icecat's open catalogue when the server starts
+ * (see lib/icecat.ts); everything else shows a brand tile. To add a photo
+ * by hand, set `image` to a URL you have the right to use.
  */
 
 type PriceSource = { label: string; url: string; asOf: string };
@@ -25,6 +26,8 @@ export type CatalogProduct = {
   tags: string[];
   badge: string | null;
   priceSource: PriceSource;
+  /** Exact manufacturer product code, used to look up an official photo on Icecat. */
+  icecat?: { brand: string; productCode: string };
 };
 
 const SRC = {
@@ -240,18 +243,21 @@ export const catalog: CatalogProduct[] = [
     description: "Rugged entry gaming laptop with a dedicated RTX 3050 graphics card.",
     specs: ["NVIDIA RTX 3050", "AMD Ryzen 7 7445HS", "16GB DDR5, 512GB SSD", "15.6\" Full HD"],
     image: null, tags: ["laptop", "windows", "gaming", "gpu", "video editing"], badge: null, priceSource: SRC.laptops80to100k,
+    icecat: { brand: "ASUS", productCode: "FA506NCG-HN199W" },
   },
   {
     id: "hp-victus-15-rtx4050", name: "HP Victus 15 (RTX 4050)", brand: "HP", category: "Laptops", price: 96303,
     description: "Mid-range gaming laptop. The RTX 4050 handles editing and most games at Full HD.",
     specs: ["NVIDIA RTX 4050, 6GB", "AMD Ryzen 7 7445H", "16GB DDR5, 512GB SSD", "15.6\" Full HD"],
     image: null, tags: ["laptop", "windows", "gaming", "gpu", "video editing", "coding"], badge: null, priceSource: SRC.laptops80to100k,
+    icecat: { brand: "HP", productCode: "15-fb3118AX" },
   },
   {
     id: "asus-vivobook-14-ultra5", name: "ASUS Vivobook 14 (Core Ultra 5)", brand: "ASUS", category: "Laptops", price: 81990,
     description: "Thin everyday laptop with a recent Intel chip. Good for coding, office work and browser-based design tools.",
     specs: ["Intel Core Ultra 5 225H", "16GB DDR5, 512GB SSD", "14\" 1920×1200 display", "Integrated Intel Arc graphics"],
     image: null, tags: ["laptop", "windows", "coding", "student", "portable", "figma"], badge: null, priceSource: SRC.laptops80to100k,
+    icecat: { brand: "ASUS", productCode: "X1407CA-LY160WS" },
   },
   {
     id: "acer-aspire-3", name: "Acer Aspire 3 (Core i5)", brand: "Acer", category: "Laptops", price: 55900,
@@ -264,6 +270,7 @@ export const catalog: CatalogProduct[] = [
     description: "The most affordable laptop here with 16GB RAM. Fine for college work and coding practice.",
     specs: ["Intel Core 5 120U", "16GB DDR5, 512GB SSD", "15.6\" Full HD"],
     image: null, tags: ["laptop", "windows", "budget", "student", "coding"], badge: "Lowest price", priceSource: SRC.laptops50to60k,
+    icecat: { brand: "ASUS", productCode: "X1504VAP-BQ1543WS" },
   },
 
   // ---------------- Tablets ----------------
@@ -386,6 +393,7 @@ export const catalog: CatalogProduct[] = [
     description: "Premium productivity mouse popular with designers and developers. Expensive for a mouse; cheaper mice work fine for most students.",
     specs: ["Wireless", "Quiet clicks", "Designed for productivity"],
     image: null, tags: ["mouse", "accessory", "design", "coding", "productivity"], badge: null, priceSource: SRC.mxMaster,
+    icecat: { brand: "Logitech", productCode: "910-006559" },
   },
   {
     id: "apple-20w-usb-c-adapter", name: "Apple 20W USB-C Power Adapter", brand: "Apple", category: "Accessories", price: 2190,

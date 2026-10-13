@@ -10,13 +10,14 @@ import {
   getAssistantBehaviorSettings,
 } from "../lib/assistant-behavior";
 import { catalog } from "../data/catalog";
+import { withIcecatImage } from "../lib/icecat";
 
 const router: IRouter = Router();
 
 const products = catalog;
 
 router.get("/shop/products", (_req, res): void => {
-  res.json(ListProductsResponse.parse(products));
+  res.json(ListProductsResponse.parse(products.map(withIcecatImage)));
 });
 
 router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
@@ -106,7 +107,7 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
           typeof result.reply === "string" && result.reply.trim()
             ? result.reply.trim()
             : "Tell me a little more about what you're looking for, and I'll narrow down the catalog.",
-        products: recommendedProducts,
+        products: recommendedProducts.map(withIcecatImage),
       }),
     );
   } catch (error) {
