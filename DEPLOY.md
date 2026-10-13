@@ -26,3 +26,9 @@ The server creates its database table automatically the first time it starts.
 - **Admin password:** without `ADMIN_PASSWORD`, anyone can change the assistant settings. With it, the admin page asks for the password and the server refuses changes without it.
 - **Updates:** pushing to the repository's `main` branch redeploys automatically.
 - **Product photos (Icecat):** products with an Icecat product code in `artifacts/api-server/src/data/catalog.ts` get an official photo from Icecat's open catalogue when the server starts. The Render log shows a line like `Icecat: photos found for 2 of 5 products`. Optional: set `ICECAT_USERNAME` to your own Icecat username; without it the public open-catalogue user is used. Set `ICECAT_DISABLED=1` to turn photos off.
+
+## User testing (saved chats)
+
+- Every Ask Circuit conversation is saved to the database (table `chat_sessions` and `chat_messages`), with the assistant settings in effect when it started.
+- **Facilitator mode:** open the store with `?facilitator=1` at the end of the link (for example `https://circuit-house.onrender.com/?facilitator=1`). The chat panel then shows a facilitator bar: type the participant label (P1, P2…), tap a card (01–09) at the moment you hand it over, and use **New participant** (tap twice) before the next person. Use `?facilitator=0` to turn it off on that device.
+- **Results:** `/admin` → **Test sessions** lists every session with its cards. Open one to read the transcript with card moments highlighted, or **Download CSV** for a spreadsheet of every message.

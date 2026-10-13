@@ -81,6 +81,50 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
 
 const CATEGORY_ORDER = ['Phones', 'Laptops', 'Tablets', 'Audio', 'Wearables', 'Accessories'] as const;
 
+const GREETING: Message = { role: 'assistant', content: 'Hi! Tell me what you’ll use it for and your budget.\n\nI’ll suggest a few options from our catalog and explain the trade-offs in plain words.' };
+
+/* ---------- Saved chat sessions (for user testing) ---------- */
+const SESSION_KEY = 'circuit-house-chat-session';
+const FACILITATOR_KEY = 'circuit-house-facilitator';
+export const TEST_CARDS = [
+  '01 Everything at once', '02 Change your mind', '03 Off-topic',
+  '04 Confused', '05 Wrong information', '06 Vague',
+  '07 Ask for a human', '08 Hinglish and typos', '09 Silence',
+] as const;
+
+function newSessionId() {
+  try { if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID(); } catch { /* fall through */ }
+  return `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+function readSessionId() {
+  try {
+    const saved = sessionStorage.getItem(SESSION_KEY);
+    if (saved) return saved;
+    const created = newSessionId();
+    sessionStorage.setItem(SESSION_KEY, created);
+    return created;
+  } catch {
+    return newSessionId();
+  }
+}
+/** Facilitator mode: open the store with ?facilitator=1 (and ?facilitator=0 to turn it off). */
+function readFacilitatorMode() {
+  try {
+    const flag = new URLSearchParams(window.location.search).get('facilitator');
+    if (flag === '1') sessionStorage.setItem(FACILITATOR_KEY, '1');
+    if (flag === '0') sessionStorage.removeItem(FACILITATOR_KEY);
+    return sessionStorage.getItem(FACILITATOR_KEY) === '1';
+  } catch {
+    return new URLSearchParams(window.location.search).get('facilitator') === '1';
+  }
+}
+async function postSessionEvent(sessionId: string, event: { type: 'card'; card: string } | { type: 'participant'; label: string }) {
+  const response = await fetch(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/api/shop/chat-sessions/${encodeURIComponent(sessionId)}/events`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(event),
+  });
+  if (!response.ok) throw new Error(`Event not saved (${response.status})`);
+}
+
 function Logo() {
   return (
     <Link href="/" className="cx-logo" aria-label="Circuit House home" data-testid="link-home">
@@ -288,11 +332,20 @@ function Home({
   const [category, setCategory] = useState('Everything');
   const [sort, setSort] = useState('recommended');
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Hi! Tell me what you’ll use it for and your budget.\n\nI’ll suggest a few options from our catalog and explain the trade-offs in plain words.' },
+    GREETING,
   ]);
   const [prompt, setPrompt] = useState('');
   const [assistantOpen, setAssistantOpen] = useState(false);
-  const assistant = useGetShoppingAssistantReply();
+  const [sessionId, setSessionId] = useState(readSessionId);
+  const [facilitator] = useState(readFacilitatorMode);
+  const assistant = useGetShoppingAssistantReply({ request: { headers: { 'x-chat-session': sessionId } } });
+  const startNewSession = () => {
+    const id = newSessionId();
+    try { sessionStorage.setItem(SESSION_KEY, id); } catch { /* memory only */ }
+    setSessionId(id);
+    setMessages([GREETING]);
+    setPrompt('');
+  };
   const catalogRef = useRef<HTMLElement>(null);
 
   const goToCatalog = () => catalogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -480,6 +533,9 @@ function Home({
           onSend={sendPrompt}
           onAdd={add}
           onClose={() => setAssistantOpen(false)}
+          facilitator={facilitator}
+          sessionId={sessionId}
+          onNewSession={startNewSession}
         />
       )}
       {cartOpen && <CartDrawer cart={cart} changeQuantity={changeQuantity} onClose={() => setCartOpen(false)} />}
@@ -489,8 +545,80 @@ function Home({
 
 const SUGGESTIONS = ['Laptop for Figma under ₹80,000', 'Phone under ₹30,000', 'Earbuds with ANC under ₹5,000'];
 
+function FacilitatorBar({ sessionId, onNewSession }: { sessionId: string; onNewSession: () => void }) {
+  const [open, setOpen] = useState(true);
+  const [participant, setParticipant] = useState('');
+  const [savedParticipant, setSavedParticipant] = useState('');
+  const [given, setGiven] = useState<{ card: string; time: string }[]>([]);
+  const [status, setStatus] = useState<string>('');
+  const [confirmNew, setConfirmNew] = useState(false);
+
+  useEffect(() => { setGiven([]); setParticipant(''); setSavedParticipant(''); setStatus(''); }, [sessionId]);
+  useEffect(() => {
+    if (!confirmNew) return;
+    const timer = window.setTimeout(() => setConfirmNew(false), 4000);
+    return () => window.clearTimeout(timer);
+  }, [confirmNew]);
+
+  const saveParticipant = async (event: FormEvent) => {
+    event.preventDefault();
+    try {
+      await postSessionEvent(sessionId, { type: 'participant', label: participant.trim() });
+      setSavedParticipant(participant.trim());
+      setStatus(participant.trim() ? `Participant saved: ${participant.trim()}` : 'Participant cleared');
+    } catch {
+      setStatus('Couldn’t save the participant. Check the connection and try again.');
+    }
+  };
+  const giveCard = async (card: string) => {
+    try {
+      await postSessionEvent(sessionId, { type: 'card', card });
+      const time = new Intl.DateTimeFormat('en-IN', { hour: '2-digit', minute: '2-digit' }).format(new Date());
+      setGiven((current) => [...current, { card, time }]);
+      setStatus(`Logged card ${card} at ${time}`);
+    } catch {
+      setStatus('Couldn’t log that card. Check the connection and tap it again.');
+    }
+  };
+
+  return (
+    <section className={`facilitator-bar${open ? ' is-open' : ''}`} aria-label="Facilitator controls" data-testid="facilitator-bar">
+      <button type="button" className="facilitator-toggle" onClick={() => setOpen((value) => !value)} aria-expanded={open} data-testid="button-facilitator-toggle">
+        <span className="facilitator-flag">Facilitator</span>
+        <span>{savedParticipant || 'No participant'} · {given.length} {given.length === 1 ? 'card' : 'cards'}</span>
+        <ChevronRight size={14} className="facilitator-chevron" />
+      </button>
+      {open && (
+        <div className="facilitator-body">
+          <form className="facilitator-row" onSubmit={(event) => void saveParticipant(event)}>
+            <label htmlFor="facilitator-participant">Participant</label>
+            <input id="facilitator-participant" value={participant} onChange={(event) => setParticipant(event.target.value)} placeholder="e.g. P1" maxLength={60} data-testid="input-participant" />
+            <button type="submit" data-testid="button-save-participant">Save</button>
+          </form>
+          <div className="facilitator-cards" role="group" aria-label="Log a card">
+            {TEST_CARDS.map((card) => {
+              const count = given.filter((item) => item.card === card).length;
+              return (
+                <button type="button" key={card} className={count ? 'is-given' : ''} onClick={() => void giveCard(card)} data-testid={`button-card-${card.slice(0, 2)}`}>
+                  <b>{card.slice(0, 2)}</b>{card.slice(3)}{count > 1 && <em>×{count}</em>}
+                </button>
+              );
+            })}
+          </div>
+          <div className="facilitator-foot">
+            <span className="facilitator-status" role="status" data-testid="text-facilitator-status">{status || 'Tap a card when you hand it to the participant.'}</span>
+            <button type="button" className={`facilitator-new${confirmNew ? ' is-confirm' : ''}`} onClick={() => { if (confirmNew) { setConfirmNew(false); onNewSession(); } else setConfirmNew(true); }} data-testid="button-new-session">
+              {confirmNew ? 'Tap again to start' : 'New participant'}
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function AssistantPanel({
-  messages, prompt, setPrompt, pending, onSend, onAdd, onClose,
+  messages, prompt, setPrompt, pending, onSend, onAdd, onClose, facilitator, sessionId, onNewSession,
 }: {
   messages: Message[];
   prompt: string;
@@ -499,6 +627,9 @@ function AssistantPanel({
   onSend: (value?: string) => void;
   onAdd: (product: Product) => void;
   onClose: () => void;
+  facilitator: boolean;
+  sessionId: string;
+  onNewSession: () => void;
 }) {
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -526,6 +657,7 @@ function AssistantPanel({
           </div>
           <button type="button" className="icon-button" onClick={onClose} aria-label="Close the shopping assistant" data-testid="button-close-assistant"><X size={17} /></button>
         </header>
+        {facilitator && <FacilitatorBar sessionId={sessionId} onNewSession={onNewSession} />}
 
         <div className="assistant-panel-messages" ref={listRef} aria-live="polite" data-testid="assistant-conversation">
           {messages.map((message, index) => (
@@ -579,7 +711,7 @@ function AssistantPanel({
             />
             <button className="send-button" type="submit" disabled={!prompt.trim() || pending} aria-label="Send question" data-testid="button-send-prompt"><Send size={16} /></button>
           </form>
-          <p className="assistant-footnote">Knows only the Circuit House catalog. Prices are reference prices from October 2026.</p>
+          <p className="assistant-footnote">Knows only the Circuit House catalog. Chats are saved for a class research study, so please don’t share personal details.</p>
         </div>
       </aside>
     </>

@@ -1,0 +1,29 @@
+import { sql } from "drizzle-orm";
+import { integer, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+
+/**
+ * Saved shopping-assistant conversations, for user testing.
+ * Mirrored by artifacts/api-server/src/lib/ensure-schema.ts — keep in sync.
+ */
+export const chatSessionsTable = pgTable("chat_sessions", {
+  id: text("id").primaryKey(),
+  participant: text("participant"),
+  /** Assistant behaviour settings in effect when the session started. */
+  settings: jsonb("settings"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const chatMessagesTable = pgTable("chat_messages", {
+  id: serial("id").primaryKey(),
+  sessionId: text("session_id")
+    .notNull()
+    .references(() => chatSessionsTable.id, { onDelete: "cascade" }),
+  /** user | assistant | card | error */
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  productIds: text("product_ids").array().notNull().default(sql`'{}'::text[]`),
+  /** Milliseconds the assistant took to answer (assistant rows only). */
+  latencyMs: integer("latency_ms"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

@@ -10,6 +10,7 @@ import {
 } from '@workspace/api-client-react';
 import type { AssistantBehaviorSettingsUpdate } from '@workspace/api-client-react';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
+import TestSessions from './test-sessions';
 
 type SettingsForm = AssistantBehaviorSettingsUpdate;
 
@@ -354,6 +355,8 @@ function AdminSettings({ password, passwordRequired, onLocked }: { password: str
             </form>
           </Form>
         )}
+
+        <TestSessions password={password} />
 
         <footer className="admin-footer"><span>Thoughtful tech. Clear answers.</span><span>Assistant controls <i>·</i> Circuit House</span></footer>
       </main>

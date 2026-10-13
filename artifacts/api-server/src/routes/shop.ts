@@ -11,6 +11,7 @@ import {
 } from "../lib/assistant-behavior";
 import { catalog } from "../data/catalog";
 import { withIcecatImage } from "../lib/icecat";
+import { ensureSession, logMessage, sessionIdFrom } from "../lib/chat-log";
 
 const router: IRouter = Router();
 
@@ -27,8 +28,22 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
     return;
   }
 
+  // Save the conversation for user testing (never blocks or breaks the chat).
+  const sessionId = sessionIdFrom(req);
+  const startedAt = Date.now();
+  if (sessionId) {
+    const snapshot = await getAssistantBehaviorSettings().then(
+      ({ persona, tone, initiativeGoal, empathyExamples, empathyScale, goalOrientationScale }) =>
+        ({ persona, tone, initiativeGoal, empathyExamples, empathyScale, goalOrientationScale }),
+      () => undefined,
+    );
+    await ensureSession(sessionId, req.get("user-agent"), snapshot);
+    await logMessage(sessionId, "user", parsed.data.message);
+  }
+
   if (!process.env.OPENAI_API_KEY) {
     req.log.error("OPENAI_API_KEY is not configured");
+    if (sessionId) await logMessage(sessionId, "error", "The shopping assistant is not configured (no OpenAI key).");
     res.status(502).json({ error: "The shopping assistant is not configured." });
     return;
   }
@@ -101,17 +116,22 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
       .map((id) => products.find((product) => product.id === id))
       .filter((product) => product !== undefined);
 
+    const replyText =
+      typeof result.reply === "string" && result.reply.trim()
+        ? result.reply.trim()
+        : "Tell me a little more about what you're looking for, and I'll narrow down the catalog.";
+    if (sessionId) {
+      await logMessage(sessionId, "assistant", replyText, recommendedProducts.map((product) => product.id), Date.now() - startedAt);
+    }
     res.json(
       GetShoppingAssistantReplyResponse.parse({
-        reply:
-          typeof result.reply === "string" && result.reply.trim()
-            ? result.reply.trim()
-            : "Tell me a little more about what you're looking for, and I'll narrow down the catalog.",
+        reply: replyText,
         products: recommendedProducts.map(withIcecatImage),
       }),
     );
   } catch (error) {
     req.log.error({ error }, "Shopping assistant request failed");
+    if (sessionId) await logMessage(sessionId, "error", `Assistant request failed: ${String(error).slice(0, 300)}`);
     res.status(502).json({ error: "The shopping assistant is temporarily unavailable." });
   }
 });
