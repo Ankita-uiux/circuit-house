@@ -1,10 +1,11 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ArrowDownUp, ArrowLeft, ArrowRight, Check, CheckCircle2, Headphones, Laptop, Minus, Plus, Search, Send, ShieldCheck, ShoppingBag, Sparkles, Truck, X, MessageCircle, Smartphone, Tablet, Watch, Mouse, ExternalLink, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, Headphones, Laptop, MapPin, Minus, Plus, Search, Send, ShieldCheck, ShoppingBag, ShoppingCart, Sparkles, X, MessageCircle, Smartphone, Tablet, Watch, Mouse, ExternalLink, type LucideIcon } from 'lucide-react';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { getListProductsQueryKey, useGetShoppingAssistantReply, useListProducts } from '@workspace/api-client-react';
 import type { Product, ShoppingAssistantTurn } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import AdminPage from '@/pages/admin';
@@ -77,26 +78,185 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
 }
 
-function Header({ count, onCart }: { count: number; onCart?: () => void }) {
+const CATEGORY_ORDER = ['Phones', 'Laptops', 'Tablets', 'Audio', 'Wearables', 'Accessories'] as const;
+
+function Logo() {
   return (
-    <>
-      <div className="topline">Independent advice. Better gear. No guesswork.</div>
-      <header className="site-header">
-        <Link href="/" className="brand" data-testid="link-home">
-          <span className="brand-mark" aria-hidden="true" />
-          <span className="brand-name">circuit house</span>
-        </Link>
-        <nav className="header-center" aria-label="Store">
-          <span>Thoughtful tech</span><span>Tested by people</span><span>Here when you need us</span>
+    <Link href="/" className="cx-logo" aria-label="Circuit House home" data-testid="link-home">
+      <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+        <rect x="1" y="1" width="30" height="30" rx="8" fill="var(--cx-accent)" />
+        <path d="M21.5 10.2a7.6 7.6 0 1 0 0 11.6" fill="none" stroke="var(--cx-accent-ink)" strokeWidth="3" strokeLinecap="round" />
+        <circle cx="21.5" cy="10.2" r="2.3" fill="var(--cx-accent-ink)" />
+        <circle cx="21.5" cy="21.8" r="2.3" fill="var(--cx-accent-ink)" />
+      </svg>
+      <span className="cx-logo-word">circuit<b>house</b></span>
+    </Link>
+  );
+}
+
+function readPincode() {
+  try { return localStorage.getItem('circuit-house-pincode') ?? ''; } catch { return ''; }
+}
+
+function Header({
+  count, onCart, search, onSearch, onSubmitSearch,
+}: {
+  count: number;
+  onCart?: () => void;
+  search?: string;
+  onSearch?: (value: string) => void;
+  onSubmitSearch?: () => void;
+}) {
+  const [pincode, setPincode] = useState(readPincode);
+  const [pinOpen, setPinOpen] = useState(false);
+  const [draft, setDraft] = useState('');
+  const savePincode = (event: FormEvent) => {
+    event.preventDefault();
+    if (draft.length !== 6) return;
+    setPincode(draft);
+    try { localStorage.setItem('circuit-house-pincode', draft); } catch { /* keep in memory */ }
+    setPinOpen(false);
+  };
+  return (
+    <header className="cx-header">
+      <div className="cx-header-inner">
+        <Logo />
+        {onSearch ? (
+          <form className="cx-search" role="search" onSubmit={(event) => { event.preventDefault(); onSubmitSearch?.(); }}>
+            <input type="search" value={search ?? ''} onChange={(event) => onSearch(event.target.value)} placeholder="What are you looking for?" aria-label="Search products" data-testid="input-product-search" />
+            <button type="submit" aria-label="Search"><Search size={18} /></button>
+          </form>
+        ) : <div className="cx-search-spacer" />}
+        <div className="cx-header-actions">
+          <div className="cx-pin-wrap">
+            <button type="button" className="cx-pin" onClick={() => { setDraft(pincode); setPinOpen((open) => !open); }} aria-expanded={pinOpen} data-testid="button-pincode">
+              <MapPin size={17} />
+              <span>{pincode ? <>Deliver to <b>{pincode}</b></> : 'Select pincode'}</span>
+            </button>
+            {pinOpen && (
+              <form className="cx-pin-pop" onSubmit={savePincode}>
+                <label htmlFor="cx-pincode">Delivery pincode</label>
+                <div className="cx-pin-row">
+                  <input id="cx-pincode" inputMode="numeric" autoComplete="postal-code" maxLength={6} value={draft} onChange={(event) => setDraft(event.target.value.replace(/\D/g, ''))} placeholder="e.g. 411001" data-testid="input-pincode" />
+                  <button type="submit" disabled={draft.length !== 6}>Apply</button>
+                </div>
+                <p>Demo store: the pincode is only shown in the header.</p>
+              </form>
+            )}
+          </div>
+          {onCart && (
+            <button className="cx-cart" aria-label="Open cart" onClick={onCart} data-testid="button-open-cart">
+              <ShoppingCart size={21} />
+              {count > 0 && <span className="cx-cart-count" data-testid="text-cart-count">{count}</span>}
+            </button>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+type Slide = { id: string; kicker: string; title: string; text: string; cta: string; tone: string; icon: LucideIcon; action: () => void };
+
+function HeroCarousel({ slides }: { slides: Slide[] }) {
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (paused || slides.length < 2) return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = window.setInterval(() => setIndex((current) => (current + 1) % slides.length), 6500);
+    return () => window.clearInterval(timer);
+  }, [paused, slides.length]);
+  if (!slides.length) return null;
+  const slide = slides[index % slides.length];
+  const Icon = slide.icon;
+  const go = (step: number) => setIndex((current) => (current + step + slides.length) % slides.length);
+  return (
+    <section className="cx-hero" aria-roledescription="carousel" aria-label="Featured" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
+      <div className={`cx-slide cx-slide-${slide.tone}`} key={slide.id} aria-roledescription="slide" aria-label={`${index + 1} of ${slides.length}`}>
+        <div className="cx-slide-copy">
+          <span className="cx-slide-kicker">{slide.kicker}</span>
+          <h1>{slide.title}</h1>
+          <p>{slide.text}</p>
+          <button type="button" className="cx-slide-cta" onClick={slide.action} data-testid={`button-hero-${slide.id}`}>{slide.cta} <ArrowRight size={16} /></button>
+        </div>
+        <div className="cx-slide-art" aria-hidden="true"><span className="cx-slide-ring" /><Icon strokeWidth={1.1} /></div>
+      </div>
+      <button type="button" className="cx-hero-arrow cx-hero-prev" onClick={() => go(-1)} aria-label="Previous offer"><ChevronLeft size={20} /></button>
+      <button type="button" className="cx-hero-arrow cx-hero-next" onClick={() => go(1)} aria-label="Next offer"><ChevronRight size={20} /></button>
+      <div className="cx-hero-dots">
+        {slides.map((item, dot) => <button type="button" key={item.id} className={dot === index ? 'active' : ''} onClick={() => setIndex(dot)} aria-label={`Show offer ${dot + 1}`} aria-current={dot === index} />)}
+      </div>
+    </section>
+  );
+}
+
+function ProductRow({
+  id, title, subtitle, products, onAdd, onViewAll,
+}: {
+  id: string;
+  title: string;
+  subtitle?: string;
+  products: Product[];
+  onAdd: (product: Product) => void;
+  onViewAll?: () => void;
+}) {
+  const track = useRef<HTMLDivElement>(null);
+  const scroll = (direction: number) => {
+    const element = track.current;
+    if (element) element.scrollBy({ left: direction * element.clientWidth * 0.85, behavior: 'smooth' });
+  };
+  if (!products.length) return null;
+  return (
+    <section className="cx-row" id={`row-${id}`} aria-labelledby={`row-title-${id}`}>
+      <div className="cx-row-head">
+        <div>
+          <h2 id={`row-title-${id}`}>{title}</h2>
+          {subtitle && <p>{subtitle}</p>}
+        </div>
+        <div className="cx-row-tools">
+          {onViewAll && <button type="button" className="cx-viewall" onClick={onViewAll} data-testid={`button-viewall-${id}`}>View all</button>}
+          <button type="button" className="cx-round" onClick={() => scroll(-1)} aria-label={`Scroll ${title} left`}><ChevronLeft size={18} /></button>
+          <button type="button" className="cx-round" onClick={() => scroll(1)} aria-label={`Scroll ${title} right`}><ChevronRight size={18} /></button>
+        </div>
+      </div>
+      <div className="cx-row-track" ref={track}>
+        {products.map((product) => <ProductCard key={product.id} product={product} onAdd={() => onAdd(product)} context={id} />)}
+      </div>
+    </section>
+  );
+}
+
+function SiteFooter({ onAsk, onCategory }: { onAsk?: () => void; onCategory?: (category: string) => void }) {
+  return (
+    <footer className="cx-footer">
+      <div className="cx-footer-inner">
+        <div className="cx-footer-brand">
+          <Logo />
+          <p>A student class project that simulates shopping for electronics in India, with an AI shopping copilot. Not a real store.</p>
+        </div>
+        <nav aria-label="Shop by category">
+          <h3>Shop</h3>
+          <ul>
+            {CATEGORY_ORDER.map((category) => (
+              <li key={category}>{onCategory ? <button type="button" onClick={() => onCategory(category)}>{category}</button> : <Link href="/">{category}</Link>}</li>
+            ))}
+          </ul>
         </nav>
-        {onCart && <div className="header-actions">
-          <button className="icon-button" aria-label="Open cart" onClick={onCart} data-testid="button-open-cart">
-            <ShoppingBag size={17} strokeWidth={1.7} />
-            {count > 0 && <span className="cart-count" data-testid="text-cart-count">{count}</span>}
-          </button>
-        </div>}
-      </header>
-    </>
+        <div>
+          <h3>Help</h3>
+          <ul>
+            {onAsk && <li><button type="button" onClick={onAsk}>Ask Circuit, our shopping copilot</button></li>}
+            <li><Link href="/checkout">Cart and demo checkout</Link></li>
+          </ul>
+        </div>
+        <div>
+          <h3>About prices</h3>
+          <p>Prices are reference prices from Indian retailers and tech sites, checked October 2026. Tap “Ref. price” on any product to see its source.</p>
+        </div>
+      </div>
+      <div className="cx-footer-base">© 2026 Circuit House · Class project. Not affiliated with any brand or retailer shown.</div>
+    </footer>
   );
 }
 
@@ -111,7 +271,8 @@ function Home({
   setCartOpen: (open: boolean) => void;
 }) {
   const productsQuery = useListProducts({ query: { queryKey: getListProductsQueryKey() } });
-  const products = productsQuery.data ?? [];
+  const products = useMemo(() => productsQuery.data ?? [], [productsQuery.data]);
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('Everything');
   const [sort, setSort] = useState('recommended');
@@ -121,11 +282,21 @@ function Home({
   const [prompt, setPrompt] = useState('');
   const [assistantOpen, setAssistantOpen] = useState(false);
   const assistant = useGetShoppingAssistantReply();
-  const categories = useMemo(() => ['Everything', ...Array.from(new Set(products.map((product) => product.category)))], [products]);
+  const catalogRef = useRef<HTMLElement>(null);
+
+  const goToCatalog = () => catalogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const goToRow = (id: string) => document.getElementById(`row-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const showCategory = (value: string) => { setCategory(value); setSearch(''); goToCatalog(); };
+  const add = (product: Product) => {
+    addToCart(product);
+    toast({ title: 'Added to cart', description: product.name });
+  };
+
+  const categories = useMemo(() => ['Everything', ...CATEGORY_ORDER.filter((item) => products.some((product) => product.category === item))], [products]);
   const visibleProducts = useMemo(() => {
+    const query = search.trim().toLowerCase();
     let list = products.filter((product) => {
       const matchesCategory = category === 'Everything' || product.category === category;
-      const query = search.trim().toLowerCase();
       const matchesSearch = !query || [product.name, product.brand, product.category, product.description, ...product.specs, ...product.tags].join(' ').toLowerCase().includes(query);
       return matchesCategory && matchesSearch;
     });
@@ -134,6 +305,38 @@ function Home({
     if (sort === 'brand') list = [...list].sort((a, b) => a.brand.localeCompare(b.brand) || a.price - b.price);
     return list;
   }, [products, category, search, sort]);
+
+  const rows = useMemo(() => {
+    const byPrice = (a: Product, b: Product) => a.price - b.price;
+    return {
+      laptops: products.filter((product) => product.category === 'Laptops').sort(byPrice),
+      phones: products.filter((product) => product.category === 'Phones' && product.price < 30000).sort(byPrice),
+      audio: products.filter((product) => product.category === 'Audio').sort(byPrice),
+      tablets: products.filter((product) => product.category === 'Tablets' || product.category === 'Wearables').sort(byPrice),
+    };
+  }, [products]);
+
+  const lowest = rows.laptops[0]?.price;
+  const slides: Slide[] = [
+    {
+      id: 'laptops', tone: 'teal', icon: Laptop, kicker: 'Back to college',
+      title: 'Laptops for every course',
+      text: `${lowest ? `From ${formatPrice(lowest)}. ` : ''}MacBook, ASUS, HP, Lenovo and Acer, compared by what you’ll actually do on them.`,
+      cta: 'Shop laptops', action: () => showCategory('Laptops'),
+    },
+    {
+      id: 'phones', tone: 'violet', icon: Smartphone, kicker: 'Smart buys',
+      title: 'Phones under ₹30,000',
+      text: 'Redmi, POCO, Samsung and CMF picks with big batteries and AMOLED screens.',
+      cta: 'See phones', action: () => goToRow('phones'),
+    },
+    {
+      id: 'copilot', tone: 'amber', icon: Sparkles, kicker: 'New · AI shopping copilot',
+      title: 'Not sure what to buy? Ask Circuit.',
+      text: 'Tell it what you’ll use it for and your budget. It suggests options from our catalog and explains the trade-offs.',
+      cta: 'Ask Circuit', action: () => setAssistantOpen(true),
+    },
+  ];
 
   const sendPrompt = (value = prompt) => {
     const message = value.trim();
@@ -150,64 +353,73 @@ function Home({
     });
   };
 
-  return (
-    <div className="store-shell">
-      <Header count={cartCount} onCart={() => setCartOpen(true)} />
-      <main>
-        <section className="hero" aria-labelledby="hero-title">
-          <div className="hero-grid">
-            <div className="hero-copy">
-              <div className="eyebrow">A better way to buy electronics</div>
-              <h1 id="hero-title">Good gear.<br />Clear answers.</h1>
-              <p>Tell us what matters. We’ll help you find the right thing, without the spec-sheet maze.</p>
-              <div className="hero-actions">
-                <a href="#catalog" className="hero-cta" data-testid="link-explore-catalog">Find your next favorite <ArrowRight size={15} /></a>
-                <button type="button" className="hero-cta hero-cta-secondary" onClick={() => setAssistantOpen(true)} data-testid="button-hero-ask"><Sparkles size={14} /> Ask Circuit for help</button>
-              </div>
-            </div>
-            <div className="hero-art" aria-label="Abstract illustration of carefully selected technology">
-              <div className="orb" /><div className="orb-ring" /><div className="hero-device" />
-              <span className="art-label">Useful by design · 01 / 04</span>
-            </div>
-          </div>
-        </section>
-        <div className="benefit-strip" aria-label="Store promises">
-          <div className="benefit"><ShieldCheck size={15} /> Advice without the upsell</div>
-          <div className="benefit"><CheckCircle2 size={15} /> Every pick earns its place</div>
-          <div className="benefit"><Truck size={15} /> Straightforward delivery</div>
-          <div className="benefit"><Headphones size={15} /> Real help, before and after</div>
-        </div>
+  const heading = search.trim() ? `Results for “${search.trim()}”` : category === 'Everything' ? 'All products' : category;
 
-        <section className="shop-section" id="catalog">
-          <div className="section-heading">
-            <div><div className="eyebrow">The considered collection</div><h2>Good things, chosen well.</h2><p>Useful technology with the details that make a difference.</p></div>
-            <label className="search-wrap"><Search size={16} /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search products, uses, or features" aria-label="Search products" data-testid="input-product-search" /></label>
-          </div>
-          <div className="shop-controls">
-            <div className="category-tabs" aria-label="Filter by category">
-              {categories.map((item) => <button key={item} className={`category-tab ${category === item ? 'active' : ''}`} onClick={() => setCategory(item)} data-testid={`button-category-${item.toLowerCase().replaceAll(' ', '-')}`}>{item}</button>)}
+  return (
+    <div className="cx-store">
+      <Header count={cartCount} onCart={() => setCartOpen(true)} search={search} onSearch={setSearch} onSubmitSearch={goToCatalog} />
+      <main className="cx-main">
+        <HeroCarousel slides={slides} />
+
+        <section className="cx-cats" aria-label="Shop by category">
+          {CATEGORY_ORDER.map((item) => {
+            const Icon = CATEGORY_ICONS[item];
+            return (
+              <button type="button" key={item} className="cx-cat" onClick={() => showCategory(item)} data-testid={`button-cat-circle-${item.toLowerCase()}`}>
+                <span className="cx-cat-circle"><Icon strokeWidth={1.4} /></span>
+                <span className="cx-cat-label">{item}</span>
+              </button>
+            );
+          })}
+        </section>
+
+        {productsQuery.isSuccess && (
+          <>
+            <ProductRow id="laptops" title="Laptops for college" subtitle="Sorted by price, from budget Windows to MacBook Pro." products={rows.laptops} onAdd={add} onViewAll={() => showCategory('Laptops')} />
+            <ProductRow id="phones" title="Phones under ₹30,000" subtitle="Big batteries and AMOLED screens for less." products={rows.phones} onAdd={add} onViewAll={() => showCategory('Phones')} />
+            <ProductRow id="audio" title="Earbuds, headphones and speakers" subtitle="Noise cancellation from ₹1,199." products={rows.audio} onAdd={add} onViewAll={() => showCategory('Audio')} />
+            <ProductRow id="tablets" title="Tablets and smartwatches" subtitle="For notes, classes and staying on track." products={rows.tablets} onAdd={add} />
+          </>
+        )}
+
+        <section className="cx-catalog" id="catalog" ref={catalogRef} aria-labelledby="catalog-title">
+          <div className="cx-catalog-head">
+            <div>
+              <h2 id="catalog-title">{heading}</h2>
+              {productsQuery.isSuccess && <p>{visibleProducts.length} {visibleProducts.length === 1 ? 'product' : 'products'}</p>}
             </div>
-            <label className="sort-select-wrap"><ArrowDownUp size={13} color="#738079" /><select className="sort-select" value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort products" data-testid="select-product-sort">
-              <option value="recommended">Sort: recommended</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option><option value="brand">Brand: A to Z</option>
-            </select></label>
+            <label className="cx-sort">
+              <span>Sort by</span>
+              <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort products" data-testid="select-product-sort">
+                <option value="recommended">Featured</option>
+                <option value="price-low">Price: low to high</option>
+                <option value="price-high">Price: high to low</option>
+                <option value="brand">Brand: A to Z</option>
+              </select>
+            </label>
+          </div>
+          <div className="cx-chips" role="group" aria-label="Filter by category">
+            {categories.map((item) => (
+              <button type="button" key={item} className={`cx-chip ${category === item ? 'active' : ''}`} aria-pressed={category === item} onClick={() => setCategory(item)} data-testid={`button-category-${item.toLowerCase().replaceAll(' ', '-')}`}>{item === 'Everything' ? 'All' : item}</button>
+            ))}
           </div>
           {productsQuery.isLoading ? <ProductSkeleton /> : productsQuery.isError ? (
-            <div className="error-state"><strong>Our shelves aren’t loading.</strong><p>Check your connection and give it another try.</p><button className="category-tab active" onClick={() => void productsQuery.refetch()} data-testid="button-retry-products">Try again</button></div>
+            <div className="cx-empty"><strong>Products aren’t loading.</strong><p>Check your connection and try again.</p><button type="button" className="cx-chip active" onClick={() => void productsQuery.refetch()} data-testid="button-retry-products">Try again</button></div>
           ) : products.length === 0 ? (
-            <div className="empty-state"><Laptop size={25} /><strong>We’re restocking our digital shelves.</strong><p>There aren’t any products to show yet. Please check back soon.</p></div>
+            <div className="cx-empty"><strong>No products yet.</strong><p>Please check back soon.</p></div>
           ) : visibleProducts.length === 0 ? (
-            <div className="empty-state"><Search size={23} /><strong>No close matches this time.</strong><p>Try a broader search or choose a different category.</p><button className="category-tab" onClick={() => { setSearch(''); setCategory('Everything'); }} data-testid="button-reset-filters">Clear filters</button></div>
+            <div className="cx-empty"><strong>No matches for that search.</strong><p>Try a brand, a category or a spec like “RTX” or “ANC”.</p><button type="button" className="cx-chip active" onClick={() => { setSearch(''); setCategory('Everything'); }} data-testid="button-reset-filters">Clear filters</button></div>
           ) : (
-            <div className="product-grid">
-              {visibleProducts.map((product) => <ProductCard key={product.id} product={product} onAdd={() => addToCart(product)} />)}
+            <div className="cx-grid">
+              {visibleProducts.map((product) => <ProductCard key={product.id} product={product} onAdd={() => add(product)} />)}
             </div>
           )}
         </section>
       </main>
-      <footer className="footer"><span>© Circuit House · A student class project, not a real store. Not affiliated with any brand shown.</span><span>Prices are reference prices from Indian retailers and tech sites, checked October 2026. Tap “Ref. price” on a product to see its source.</span></footer>
+      <SiteFooter onAsk={() => setAssistantOpen(true)} onCategory={showCategory} />
       {!assistantOpen && (
         <button type="button" className="assistant-fab" onClick={() => setAssistantOpen(true)} aria-label="Open the shopping assistant" data-testid="button-open-assistant">
-          <MessageCircle size={19} strokeWidth={1.8} />
+          <MessageCircle size={20} strokeWidth={2} />
           <span>Ask Circuit</span>
           {messages.length > 1 && <span className="assistant-fab-dot" aria-hidden="true" />}
         </button>
@@ -219,7 +431,7 @@ function Home({
           setPrompt={setPrompt}
           pending={assistant.isPending}
           onSend={sendPrompt}
-          onAdd={addToCart}
+          onAdd={add}
           onClose={() => setAssistantOpen(false)}
         />
       )}
@@ -385,36 +597,34 @@ function ProductVisual({ product, size = 'card' }: { product: Product; size?: 'c
   );
 }
 
-function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }) {
+function ProductCard({ product, onAdd, context }: { product: Product; onAdd: () => void; context?: string }) {
+  const tid = context ? `${context}-${product.id}` : product.id;
   return (
-    <article className="product-card" data-testid={`card-product-${product.id}`}>
-      <div className="product-image">
+    <article className="cx-card" data-testid={`card-product-${tid}`}>
+      <div className="cx-card-media">
         <ProductVisual product={product} />
-        {product.badge && <span className="product-badge">{product.badge}</span>}
+        {product.badge && <span className="cx-badge">{product.badge}</span>}
       </div>
-      <div className="product-card-body">
-        <div className="product-category">{product.brand} · {product.category}</div>
-        <h3>{product.name}</h3>
-        <div className="product-description">{product.description}</div>
-        <ul className="product-specs">
-          {product.specs.slice(0, 3).map((spec) => <li key={spec}>{spec}</li>)}
+      <div className="cx-card-body">
+        <span className="cx-card-brand">{product.brand}</span>
+        <h3 title={product.name}>{product.name}</h3>
+        <ul className="cx-card-specs">
+          {product.specs.slice(0, 2).map((spec) => <li key={spec}>{spec}</li>)}
         </ul>
-        <div className="product-card-bottom">
-          <div className="price-block">
-            <span className="price">{formatPrice(product.price)}</span>
-            <a className="price-source" href={product.priceSource.url} target="_blank" rel="noreferrer" title={`Reference price from ${product.priceSource.label}`} data-testid={`link-price-source-${product.id}`}>
-              Ref. price · {product.priceSource.asOf} <ExternalLink size={9} />
-            </a>
-          </div>
-          <button className="add-button" onClick={onAdd} aria-label={`Add ${product.name} to cart`} data-testid={`button-add-${product.id}`}><Plus size={17} /></button>
+        <div className="cx-card-price">
+          <span className="cx-price">{formatPrice(product.price)}</span>
+          <a className="cx-ref" href={product.priceSource.url} target="_blank" rel="noreferrer" title={`Reference price from ${product.priceSource.label}`} data-testid={`link-price-source-${tid}`}>
+            Ref. price · {product.priceSource.asOf} <ExternalLink size={10} />
+          </a>
         </div>
+        <button type="button" className="cx-add" onClick={onAdd} aria-label={`Add ${product.name} to cart`} data-testid={`button-add-${tid}`}><ShoppingCart size={15} /> Add to cart</button>
       </div>
     </article>
   );
 }
 
 function ProductSkeleton() {
-  return <div className="loading-grid" aria-label="Loading products">{[0, 1, 2, 3].map((item) => <div key={item} className="skeleton-card"><div className="skeleton skeleton-media" /><div className="skeleton skeleton-line" /><div className="skeleton skeleton-line" /><div className="skeleton skeleton-line" style={{ width: '40%' }} /></div>)}</div>;
+  return <div className="cx-grid" aria-label="Loading products">{[0, 1, 2, 3].map((item) => <div key={item} className="cx-card cx-card-skeleton"><div className="cx-card-media" /><div className="cx-card-body"><span /><span /><span /></div></div>)}</div>;
 }
 
 function CartDrawer({ cart, changeQuantity, onClose }: { cart: CartLine[]; changeQuantity: (id: string, amount: number) => void; onClose: () => void }) {
@@ -442,7 +652,7 @@ function Checkout({ cart, clearCart }: { cart: CartLine[]; clearCart: () => void
   const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0);
   const finishDemo = () => { setConfirmed(true); clearCart(); };
   return (
-    <div className="checkout-page">
+    <div className="checkout-page cx-checkout">
       <Header count={itemCount} />
       <main className="checkout-main">
         <Link href="/" className="checkout-back" data-testid="link-back-store"><ArrowLeft size={14} /> Back to the store</Link>
@@ -472,7 +682,7 @@ function Checkout({ cart, clearCart }: { cart: CartLine[]; clearCart: () => void
           </section>
         </div>
       </main>
-      <footer className="footer"><span>© Circuit House · Demo storefront</span><span>No payment provider connected</span></footer>
+      <SiteFooter />
     </div>
   );
 }
