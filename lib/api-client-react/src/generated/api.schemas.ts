@@ -9,6 +9,12 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface ImageCredit {
+  author: string;
+  license: string;
+  sourceUrl: string;
+}
+
 /**
  * Where the listed price came from, so shoppers can check it.
  */
@@ -34,6 +40,8 @@ export interface Product {
      * @nullable
      */
   image: string | null;
+  /** Who took the photo and its licence, when the photo needs credit. */
+  imageCredit?: ImageCredit | null;
   tags: string[];
   /** @nullable */
   badge: string | null;

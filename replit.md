@@ -11,7 +11,7 @@ A demo Indian electronics store (class project) with **Ask Circuit**, an AI shop
 - Prices are in **Indian rupees**, formatted `₹1,19,900` (en-IN). Never use dollars.
 - **No invented data:** no fake ratings/reviews, discounts, bank offers or stock claims. Prices are *reference prices* with a source link and date.
 - The UI may follow **Croma's layout and shopping flow**, but must **not** copy Croma's logo, name or branding. Circuit House has its own logo (teal rounded square with a "C" mark, wordmark "circuit**house**").
-- Use only images we're allowed to use (Unsplash free photos with credit, Icecat open-catalogue images, or drawn SVG art). No retailer/brand product photos.
+- Product photos are **linked, never downloaded** (no image files in the repo or server). Prefer free-licence photos (Wikimedia Commons, Unsplash) with a visible credit; Icecat open-catalogue images; brand's own product images only after a visual check. Never use Croma/Amazon/Flipkart images.
 - Keep explanations simple; the owner is a design student, not a developer.
 
 ## Where it runs
@@ -51,6 +51,7 @@ pnpm workspaces · Node 24 · TypeScript 5.9 · Express 5 · PostgreSQL + Drizzl
 | Chat endpoint (OpenAI call, product picks, logging) | `artifacts/api-server/src/routes/shop.ts` |
 | Admin settings API + password check | `routes/assistant-settings.ts`, `lib/admin-auth.ts` |
 | Saved chats / test sessions API | `routes/chat-sessions.ts`, `lib/chat-log.ts` |
+| Product photos (linked Commons URLs + credits) | `artifacts/api-server/src/data/photos.ts` |
 | Icecat photo lookup | `lib/icecat.ts` |
 | Tables created on server start | `lib/ensure-schema.ts` (must mirror Drizzle schema in `lib/db/src/schema/*.ts`) |
 | API contract | `lib/api-spec/openapi.yaml` → generated `lib/api-client-react`, `lib/api-zod` |
@@ -67,7 +68,7 @@ pnpm workspaces · Node 24 · TypeScript 5.9 · Express 5 · PostgreSQL + Drizzl
 - Rotating offer banners (fixed height): *Festive Tech Fest* (real Unsplash photo by Rodion Kutsaiev), *Laptops for every course* (SVG laptop), *5G phones under ₹20,000* (real Unsplash photo by Daniel Romero), *Ask Circuit* (mock chat card). Banner prices are computed from the catalog; fine print says reference prices, Oct 2026. If a photo fails, the SVG art shows.
 - Round category shortcuts (Phones, Laptops, Tablets, Audio, Wearables, Accessories).
 - Scrolling product rows (laptops, phones under ₹30k, audio, tablets & watches) and an "All products" grid with filter chips, sort, and search across name/brand/specs.
-- Product cards: brand, name, two key specs, ₹ price with "Ref. price · date" link to its source, Add to cart (+ toast). No ratings. Brand tile instead of a photo unless Icecat finds one.
+- Product cards: brand, name, two key specs, ₹ price with "Ref. price · date" link to its source, Add to cart (+ toast). No ratings. 19 products show a linked Wikimedia Commons photo with a small credit (author · licence, links to the source); the rest show a brand tile unless Icecat finds a photo.
 - Cart drawer and a demo checkout (no payment).
 
 **Catalog** — 54 real products sold in India: 25 phones (₹15,999–₹1,64,900), 9 laptops (₹51,950–₹1,69,900), 5 tablets, 9 audio, 4 wearables, 2 accessories. Prices from 91mobiles, Smartprix, Apple India and news sites, checked 8–13 Oct 2026 (Apple raised several Indian prices during 2026, so Apple prices are higher than older listings). Each product has `priceSource {label, url, asOf}`.
@@ -98,6 +99,8 @@ From 5 student interviews + a JTBD list (in the owner's files): students set a f
 - Admin password is sent as `x-admin-password`; it is never logged.
 
 ## Open items / next steps
+
+- **Photos for the other 35 products**: brand-site image links were being collected (Apple, Sony, JBL, Nothing, OnePlus, Samsung, iQOO, realme, Motorola) but not yet checked visually or added. Still to do: vivo, POCO, Tecno, Lava, Lenovo, ASUS, boAt, Noise.
 
 - **Icecat**: on the first live run, 0 of 5 products got photos. Check Render logs for lines starting `Icecat:` to see why (not found vs connection). Product codes may need changing to Icecat's MPNs.
 - More products were planned (flagship phones, laptops ₹30k–₹80k, tablets, over-ear headphones, smartwatches, power banks) from Smartprix/91mobiles pages.

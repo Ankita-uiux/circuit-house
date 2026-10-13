@@ -9,6 +9,7 @@
 export * from './assistantBehaviorSettings';
 export * from './assistantBehaviorSettingsUpdate';
 export * from './healthStatus';
+export * from './imageCredit';
 export * from './priceSource';
 export * from './product';
 export * from './shoppingAssistantError';

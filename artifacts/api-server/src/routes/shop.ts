@@ -11,11 +11,16 @@ import {
 } from "../lib/assistant-behavior";
 import { catalog } from "../data/catalog";
 import { withIcecatImage } from "../lib/icecat";
+import { PRODUCT_PHOTOS } from "../data/photos";
 import { ensureSession, logMessage, sessionIdFrom } from "../lib/chat-log";
 
 const router: IRouter = Router();
 
-const products = catalog;
+/** Catalog products with their linked photo and its credit (photos are not stored on our server). */
+const products = catalog.map((product) => {
+  const photo = PRODUCT_PHOTOS[product.id];
+  return photo ? { ...product, image: photo.image, imageCredit: photo.credit } : { ...product, imageCredit: null };
+});
 
 router.get("/shop/products", (_req, res): void => {
   res.json(ListProductsResponse.parse(products.map(withIcecatImage)));

@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ImageCredit } from './imageCredit';
 import type { PriceSource } from './priceSource';
 
 export interface Product {
@@ -22,6 +23,8 @@ export interface Product {
      * @nullable
      */
   image: string | null;
+  /** Who took the photo and its licence, when the photo needs credit. */
+  imageCredit?: ImageCredit | null;
   tags: string[];
   /** @nullable */
   badge: string | null;

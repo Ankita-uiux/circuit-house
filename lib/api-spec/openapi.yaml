@@ -144,6 +144,11 @@ components:
         image:
           type: ["string", "null"]
           description: Optional photo URL. When null, the storefront shows a brand tile.
+        imageCredit:
+          description: Who took the photo and its licence, when the photo needs credit.
+          oneOf:
+            - $ref: "#/components/schemas/ImageCredit"
+            - type: "null"
         tags:
           type: array
           items:
@@ -153,6 +158,16 @@ components:
         priceSource:
           $ref: "#/components/schemas/PriceSource"
       required: [id, name, brand, category, price, description, specs, image, tags, badge, priceSource]
+    ImageCredit:
+      type: object
+      properties:
+        author:
+          type: string
+        license:
+          type: string
+        sourceUrl:
+          type: string
+      required: [author, license, sourceUrl]
     PriceSource:
       type: object
       description: Where the listed price came from, so shoppers can check it.
