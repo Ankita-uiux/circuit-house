@@ -1,0 +1,434 @@
+[
+  {
+    "id": "iphone-18-pro",
+    "name": "iPhone 18 Pro",
+    "brand": "Apple",
+    "category": "Phones",
+    "source": "https://www.office-partner.de/apple-iphone-18-pro-2tb-silber-n2008307105",
+    "url": "https://cdn-media.office-partner.de/product-management/products/assets/n2008307082/product_image/iPhone18ProBurgundy.jpeg"
+  },
+  {
+    "id": "iphone-17",
+    "name": "iPhone 17",
+    "brand": "Apple",
+    "category": "Phones",
+    "source": "https://www.thegioididong.com/tin-tuc/so-sanh-iphone-17-va-iphone-16-nhung-nang-cap-cuc-dang-gia-sau-mot-nam-1582699",
+    "url": "https://cdnv2.tgdd.vn/mwg-static/common/News/1582699/iPhone_17_White_PDP_Image_Position_1_White_Color__VN-VI.jpg"
+  },
+  {
+    "id": "iphone-17e",
+    "name": "iPhone 17e",
+    "brand": "Apple",
+    "category": "Phones",
+    "source": "https://imad.pl/iphone-17e-512gb-white",
+    "url": "https://imad.pl/media/catalog/product/cache/74c1057f7991b4edb2bc7bdaa94de933/i/p/iphone_17e_white_pdp_image_position_1__pl-pl.jpg"
+  },
+  {
+    "id": "pixel-10a",
+    "name": "Google Pixel 10a",
+    "brand": "Google",
+    "category": "Phones",
+    "source": "https://kantronics.co.ke/products/google-pixel-10a",
+    "url": "https://kantronics.co.ke/cdn/shop/files/Google-Pixel-10a-blue.webp?v=1777127331"
+  },
+  {
+    "id": "nothing-phone-4a-pro",
+    "name": "Nothing Phone (4a) Pro",
+    "brand": "Nothing",
+    "category": "Phones",
+    "source": "https://pricehistory.app/p/nothing-phone-4a-pro-silver-256-gb-YzdhRGSj",
+    "url": "https://rukmini1.flixcart.com/image/1500/1500/xif0q/mobile/3/3/w/-original-imahh7x7gejesgvh.jpeg?q=90"
+  },
+  {
+    "id": "oneplus-nord-6",
+    "name": "OnePlus Nord 6",
+    "brand": "OnePlus",
+    "category": "Phones",
+    "source": "https://www.techspecs.info/oneplus-nord-6-5g/",
+    "url": "https://www.techspecs.info/_next/image/?q=75&url=https%3A%2F%2Fwww.techspecs.info%2Fuploads%2FONEPLUS_NORD_6_5_G_4efc0d1309.png&w=828"
+  },
+  {
+    "id": "cmf-phone-2-pro",
+    "name": "CMF Phone 2 Pro",
+    "brand": "CMF by Nothing",
+    "category": "Phones",
+    "source": "https://www.sumashtech.com/product/cmf-phone-2-pro",
+    "url": "https://sumashtech.sgp1.cdn.digitaloceanspaces.com/color/2298/CMF_Phone_2_Pro_White.webp"
+  },
+  {
+    "id": "redmi-note-15",
+    "name": "Redmi Note 15",
+    "brand": "Xiaomi",
+    "category": "Phones",
+    "source": "https://infocellshop.com.br/produtos/celular-xiaomi-redmi-note-15-128gb-256gb-e909o/",
+    "url": "https://acdn-us.mitiendanube.com/stores/005/392/347/products/2asd-124c380c01ff74d3d717679200370690-1024-1024.webp"
+  },
+  {
+    "id": "poco-x8",
+    "name": "POCO X8 5G",
+    "brand": "POCO",
+    "category": "Phones",
+    "source": "https://www.91mobiles.com/hub/poco-x8-x8-power-price-ranges-leak-september-4th-india-launch/",
+    "url": "https://www.91-img.com/pictures/176956-v4-poco-x8-5g-mobile-phone-hres-1.jpg?tr=q-70"
+  },
+  {
+    "id": "galaxy-m47",
+    "name": "Samsung Galaxy M47 5G",
+    "brand": "Samsung",
+    "category": "Phones",
+    "source": "https://zh.kalvo.com/samsung-galaxy-m47-235841.html",
+    "url": "https://cdn.kalvo.com/uploads/img/gallery/85785-samsung-galaxy-m47-7.jpg"
+  },
+  {
+    "id": "samsung-galaxy-a37",
+    "name": "Samsung Galaxy A37 5G",
+    "brand": "Samsung",
+    "category": "Phones",
+    "source": "https://www.cyberport.de/smartphone-und-foto/smartphones/samsung/pdp/a409-29f/samsung-galaxy-a37-5g-256-gb-awesome-white-android-smartphone.html",
+    "url": "https://img-resizer.cyberport.de/cp/images/684x684/PI_775947190"
+  },
+  {
+    "id": "nothing-phone-4a",
+    "name": "Nothing Phone (4a)",
+    "brand": "Nothing",
+    "category": "Phones",
+    "source": "https://www.reliancedigital.in/collection/nothing-4a-series",
+    "url": "https://cdn.jiostore.online/v2/jmd-asp/jdprod/wrkr/products/pictures/item/free/original/nothing/494743287/0/VhsIe4s_b6-mcz3JwCc2-NothingPhone4a-494743287-i-1.jpg"
+  },
+  {
+    "id": "vivo-t5-pro",
+    "name": "vivo T5 Pro",
+    "brand": "vivo",
+    "category": "Phones",
+    "source": "https://www.flipkart.com/vivo-t5-pro-5g-glacier-blue-256-gb/p/itma21e2e09d4493",
+    "url": "https://rukminim2.flixcart.com/image/960/1280/xif0q/mobile/u/w/l/-original-imahmhjazxzzha47.jpeg?q=60"
+  },
+  {
+    "id": "iqoo-z11",
+    "name": "iQOO Z11 5G",
+    "brand": "iQOO",
+    "category": "Phones",
+    "source": "https://erafone.com/produk/iqoo-z11-5g",
+    "url": "https://cdnpro.eraspace.com/media/catalog/product/i/q/iqoo_z11_5g_blue_01_1.webp"
+  },
+  {
+    "id": "motorola-edge-70",
+    "name": "Motorola Edge 70",
+    "brand": "Motorola",
+    "category": "Phones",
+    "source": "https://mediagalaxy.ro/telefon-motorola-edge-70-512gb-12gb-ram-dual-sim-gadget-grey/cpd/PBA50002PL/",
+    "url": "https://lcdn.mediagalaxy.ro/media/catalog/product/m/o/motorola_edge_70_gray_03_d086bc9c.jpg"
+  },
+  {
+    "id": "oneplus-nord-ce-6",
+    "name": "OnePlus Nord CE 6 5G",
+    "brand": "OnePlus",
+    "category": "Phones",
+    "source": "https://www.poorvika.com/oneplus-nord-ce6-5g-pitch-black-8gb-256gb/p",
+    "url": "https://img-prd-pim.poorvika.com/cdn-cgi/image/format%3Dauto%2Cquality%3D75/product/Oneplus-nord-ce6-5g-pitch-black-8gb-256gb-Front-Back-View.webp"
+  },
+  {
+    "id": "realme-p4s",
+    "name": "realme P4s 5G",
+    "brand": "realme",
+    "category": "Phones",
+    "source": "https://tech.hindustantimes.com/realme-p4s-5g-price-in-india-P7436279",
+    "url": "https://images.hindustantimes.com/tech/htmobile4/realme_p4s_5g/heroimage/-original-imahqh7n4vdzgmn3-WHITE-H.webp"
+  },
+  {
+    "id": "samsung-galaxy-m17",
+    "name": "Samsung Galaxy M17 5G",
+    "brand": "Samsung",
+    "category": "Phones",
+    "source": "https://www.mobilemaya.com/gallery/samsung-galaxy-m17-5g",
+    "url": "https://www.mobilemaya.com/public/media/samsung-galaxy-m17-5g-moonlight-silver-official.webp"
+  },
+  {
+    "id": "iqoo-z11-lite",
+    "name": "iQOO Z11 Lite 5G",
+    "brand": "iQOO",
+    "category": "Phones",
+    "source": "https://www.iqoo.com/ru/products/param/z11-lite",
+    "url": "https://ru-exstatic-vivofs.vivo.com/PSee2l50xoirPK7y/1778574718452/6d2ff271c5b1e6c62b6d0fbaa551ee44.png"
+  },
+  {
+    "id": "poco-m8x",
+    "name": "POCO M8x 5G",
+    "brand": "POCO",
+    "category": "Phones",
+    "source": "https://gadgets.beebom.com/mobile/poco-m8x-5g",
+    "url": "https://cdn.beebom.com/mobile/poco-m8x-5g-front-back-1.png"
+  },
+  {
+    "id": "moto-g37-power",
+    "name": "Moto G37 Power 5G",
+    "brand": "Motorola",
+    "category": "Phones",
+    "source": "https://overseaselectronics.com/shop/gsm-phones/motorola-moto-g37-power-5g-nautical-blue-128gb-4gb-ram-gsm-unlocked-phone-mediatek-dimensity-6300-50mp-detail",
+    "url": "https://overseaselectronics.com/images/stories/virtuemart/product/MotorolaMotoG37Powerblue.jpg"
+  },
+  {
+    "id": "realme-c100x",
+    "name": "realme C100X",
+    "brand": "realme",
+    "category": "Phones",
+    "source": "https://www.paiinternational.in/product-details/realme-c100x-4gb-ram-64gb-deepblue-tides",
+    "url": "https://backend.paiinternational.in/media/images/mm_5tb2KV8.webp"
+  },
+  {
+    "id": "tecno-spark-50",
+    "name": "Tecno Spark 50 5G",
+    "brand": "Tecno",
+    "category": "Phones",
+    "source": "https://www.myg.in/mobile-phones/tecno/tecno-spark-50-5g-6gb-128gb-ink-black/",
+    "url": "https://www.myg.in/images/detailed/129/Tecno-spark-50-5g-ink-black-6gb-128gb-Front-Back-Side-View-removebg-preview.png"
+  },
+  {
+    "id": "samsung-galaxy-m17e",
+    "name": "Samsung Galaxy M17e 5G",
+    "brand": "Samsung",
+    "category": "Phones",
+    "source": "https://dekatronics.co.ke/product-details?id=628",
+    "url": "https://dekatronics.co.ke/assets/images/products/samsung-galaxy-m17e-5g-6gb128gb-default.jpg"
+  },
+  {
+    "id": "lava-virat-v1-pro",
+    "name": "Lava Virat V1 Pro 5G",
+    "brand": "Lava",
+    "category": "Phones",
+    "source": "https://comparetab.com/mobiles/compare/OnePlus-10T-vs-Lava-Virat-V1-Pro-5G",
+    "url": "https://cdn.comparetab.com/images/2026/09-04/20260904162949_52a542484921456a.webp"
+  },
+  {
+    "id": "macbook-pro-14-m5",
+    "name": "MacBook Pro 14\" (M5)",
+    "brand": "Apple",
+    "category": "Laptops",
+    "source": "https://www.apple.com/shop/buy-mac/macbook-pro",
+    "url": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/mbp14-spaceblack-cto-hero-202410?wid=1000&hei=1000&fmt=jpeg&qlt=95"
+  },
+  {
+    "id": "macbook-air-13-m5",
+    "name": "MacBook Air 13\" (M5)",
+    "brand": "Apple",
+    "category": "Laptops",
+    "source": "https://www.apple.com/shop/buy-mac/macbook-air",
+    "url": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/mba13-skyblue-select-202503?wid=1000&hei=1000&fmt=jpeg&qlt=95"
+  },
+  {
+    "id": "macbook-neo",
+    "name": "MacBook Neo",
+    "brand": "Apple",
+    "category": "Laptops",
+    "source": "https://www.reliancedigital.in/product/apple-mhfc4hna-macbook-neo-apple-a18-pro-chip8-gb512-gb-ssdmacosliquid-retina-3302-cm-13-inch-silver-mmdg1g-9971842",
+    "url": "https://cdn.jiostore.online/v2/jmd-asp/jdprod/wrkr/products/pictures/item/free/original/apple/494743562/0/3sM62ndLzT-jQrUwhJ9FB-Apple-MacBook-Neo-Apple-A18-Pro-Chip-494743562-i-1.jpg"
+  },
+  {
+    "id": "lenovo-loq-rtx5060",
+    "name": "Lenovo LOQ (RTX 5060)",
+    "brand": "Lenovo",
+    "category": "Laptops",
+    "source": "https://www.emag.bg/laptop-gaming-lenovo-loq-15ahp10-amd-ryzentm-7-250-15-6-full-hd-ips-144hz-16gb-ddr5-ram-1tb-ssd-nvidiar-geforce-rtxtm-5060-8gb-gddr7-no-os-luna-grey-83jg004frm/pd/DFNRDP3BM/",
+    "url": "https://s13emagst.akamaized.net/products/97173/97172770/images/res_14dd75dc2b65bfc4a780c8e5106574f0.jpg"
+  },
+  {
+    "id": "asus-tuf-a15-rtx3050",
+    "name": "ASUS TUF Gaming A15 (RTX 3050)",
+    "brand": "ASUS",
+    "category": "Laptops",
+    "source": "https://www.coppel.com/pdp/laptop-asus-tuf-gaming-a15-geforce-rtx-3050-amd-ryzen-5-7535hs-nvidia-8gb-512gb-ssd-156-negra-mkp-94861272",
+    "url": "https://cdn5.coppel.com/mkp/94861272-1.jpg"
+  },
+  {
+    "id": "hp-victus-15-rtx4050",
+    "name": "HP Victus 15 (RTX 4050)",
+    "brand": "HP",
+    "category": "Laptops",
+    "source": "https://yantranepal.com/hp-victus-15-gaming-2024-price-nepal/?srsltid=AfmBOoqrWQca-Pmvy03PtjhQUR-CjOl7LW7V9kjAhH0Pmv5VUTMqrrFR",
+    "url": "https://yantranepal.com/wp-content/uploads/2024/09/HP-Victus-15-Ryzen-5-8645HS-1.webp"
+  },
+  {
+    "id": "asus-vivobook-14-ultra5",
+    "name": "ASUS Vivobook 14 (Core Ultra 5)",
+    "brand": "ASUS",
+    "category": "Laptops",
+    "source": "https://www.sportsdirect.com/asus-asus-vivobook-14-x1407ca-14inch-laptop---intel-core-ultra-5-225h-16gb-512gb-758877",
+    "url": "https://www.sportsdirect.com/images/imgzoom/75/75887710_xxl.jpg"
+  },
+  {
+    "id": "acer-aspire-3",
+    "name": "Acer Aspire 3 (Core i5)",
+    "brand": "Acer",
+    "category": "Laptops",
+    "source": "https://www.very.co.uk/acer-aspire-3-laptop-156in-fhdnbspintel-core-i5-8gb-ram-1tb-ssd-silver/1601072370.prd",
+    "url": "https://media.very.co.uk/i/very/W6N9M_SQ1_0000000035_SILVER_SLf?%24pdp_300x400_x2%24=&fmt=jpg"
+  },
+  {
+    "id": "asus-vivobook-15-core5",
+    "name": "ASUS Vivobook 15 (Core 5)",
+    "brand": "ASUS",
+    "category": "Laptops",
+    "source": "https://www.umart.com.au/product/asus-vivobook-15-15-6in-fhd-intel-core-5-120u-1tb-ssd-16gb-ram-w11h-laptop-x1504vap-nj815w-77169",
+    "url": "https://assets.umart.com.au/newsite/images/202404/source_img/Asus-Laptops-ASUS-Vivobook-15-15-6in-FHD-Intel-Core-5-120U-1TB-SSD-16GB-RAM-W11H-Laptop-X1504VAP-NJ815W-4.webp"
+  },
+  {
+    "id": "ipad-air-m4",
+    "name": "iPad Air 11\" (M4)",
+    "brand": "Apple",
+    "category": "Tablets",
+    "source": "https://www.abt.com/Apple-iPad-Air-M4-11-Inch-256GB-Wi-Fi-in-Space-Gray-MH354LLA/p/240093.html",
+    "url": "https://content.abt.com/media/images/products/BDP_Images/apple-ipad-air-m4-space-gray-front.jpg"
+  },
+  {
+    "id": "ipad-a16",
+    "name": "iPad 11\" (A16)",
+    "brand": "Apple",
+    "category": "Tablets",
+    "source": "https://www.office-discount.de/apple-ipad-wi-fi-a16-2025-tablet-552477",
+    "url": "https://assets.office-discount.de/img/30/17/Zoom_m2759490.jpg?height=800&impolicy=fit&width=800"
+  },
+  {
+    "id": "redmi-pad-2-pro-5g",
+    "name": "Redmi Pad 2 Pro 5G",
+    "brand": "Xiaomi",
+    "category": "Tablets",
+    "source": "https://www.mi.com/my/mobile/",
+    "url": "https://i02.appmifile.com/153_item_my/19/09/2025/39ff42b1a38d776b0cc009946062f2c7.png"
+  },
+  {
+    "id": "oneplus-pad-go-2",
+    "name": "OnePlus Pad Go 2",
+    "brand": "OnePlus",
+    "category": "Tablets",
+    "source": "https://swiftronics.ca/products/oneplus-pad-go-2-global-model-wifi-opd2504",
+    "url": "https://swiftronics.ca/cdn/shop/files/51oVMlsAQwL._AC_UF894_1000_QL80.jpg?v=1781302185"
+  },
+  {
+    "id": "lenovo-tab-m10-5g",
+    "name": "Lenovo Tab M10 5G",
+    "brand": "Lenovo",
+    "category": "Tablets",
+    "source": "https://www.lenovo.com/de/de/p/tablets/lenovo-tab-series/lenovo-tab-m10-5g/len103l0021",
+    "url": "https://p3-ofp.static.pub/fes/cms/2024/02/27/zocahrb1vp30o16jwcti858vw333te870423.png?height=584&width=584"
+  },
+  {
+    "id": "sony-wh-1000xm6",
+    "name": "Sony WH-1000XM6",
+    "brand": "Sony",
+    "category": "Audio",
+    "source": "https://www.currys.ie/products/sony-wh1000xm6-wireless-bluetooth-noisecancelling-headphones-midnight-blue-10282436.html",
+    "url": "https://media.currys.biz/i/currysprod/M10282426_blue?%24l-large%24=&fmt=auto"
+  },
+  {
+    "id": "airpods-pro-3",
+    "name": "AirPods Pro 3",
+    "brand": "Apple",
+    "category": "Audio",
+    "source": "https://newtime.ua/navushnyky/navushniki-apple-airpods-pro-3",
+    "url": "https://cdn.newtime.ua/upload/2025-09/navushniki-apple-airpods-pro-3_2400.webp"
+  },
+  {
+    "id": "jbl-flip-7",
+    "name": "JBL Flip 7",
+    "brand": "JBL",
+    "category": "Audio",
+    "source": "https://www.harveynorman.co.nz/headphones-and-speakers/speaker/portable-speakers/jbl-flip-7-portable-bluetooth-speaker-blue-jblflip7blu.html",
+    "url": "https://hnsfpau.imgix.net/5/images/detailed/508/6494046.1.jpg?auto=format%2Ccompress&bg=0FFF&fit=fill&h=844&w=1500"
+  },
+  {
+    "id": "cmf-buds-pro-2",
+    "name": "CMF Buds Pro 2",
+    "brand": "CMF by Nothing",
+    "category": "Audio",
+    "source": "https://www.dastore.pe/products/cmf-buds-pro-2",
+    "url": "https://www.dastore.pe/cdn/shop/files/cmf-buds-pro2-orange.jpg?crop=center&height=1300&v=1768421110&width=1300"
+  },
+  {
+    "id": "oneplus-nord-buds-4-pro",
+    "name": "OnePlus Nord Buds 4 Pro",
+    "brand": "OnePlus",
+    "category": "Audio",
+    "source": "https://www.oneplus.in/product/oneplus-nord-buds-4-pro",
+    "url": "https://image01-in.oneplus.net/media/202603/03/d3c7633b443c789f645bd60eb413f9bb.png"
+  },
+  {
+    "id": "oneplus-nord-buds-3-pro",
+    "name": "OnePlus Nord Buds 3 Pro",
+    "brand": "OnePlus",
+    "category": "Audio",
+    "source": "https://www.oneplus.com/gr/product/oneplus-nord-buds-3-pro",
+    "url": "https://image01-eu.oneplus.net/media/202407/09/ee9d6e311be1a3a33c8f0c33fe16c8fd.png"
+  },
+  {
+    "id": "boat-nirvana-ion-anc",
+    "name": "boAt Nirvana Ion ANC",
+    "brand": "boAt",
+    "category": "Audio",
+    "source": "https://www.flipkart.com/boat-nirvana-ion-32db-active-noise-cancellation-120hrs-bionic-mode-hifi5-bluetooth/p/itmbdf03ab73bf93",
+    "url": "https://rukmini1.flixcart.com/image/1500/1500/xif0q/headphone/l/s/o/-enriched-transparent-original-imagwmkbrfqvthrt.png?q=70"
+  },
+  {
+    "id": "boat-airdopes-280-anc",
+    "name": "boAt Airdopes 280 ANC",
+    "brand": "boAt",
+    "category": "Audio",
+    "source": "https://www.boat-lifestyle.com/products/airdopes-280-anc-wireless-earbuds",
+    "url": "https://cdn.shopify.com/s/files/1/0057/8938/4802/files/Artboard12_600935d3-a56e-4fed-8402-811fd4d6d87b.png?v=1721273391"
+  },
+  {
+    "id": "noise-buds-n1",
+    "name": "Noise Buds N1",
+    "brand": "Noise",
+    "category": "Audio",
+    "source": "https://www.gonoise.com/products/noise-buds-n1-truly-wireless-earbuds",
+    "url": "https://www.gonoise.com/cdn/shop/files/1.1_b6ba7437-1bb4-42de-8bcc-b3bf0d869a13.png?v=1709125864&width=800"
+  },
+  {
+    "id": "apple-watch-se-3",
+    "name": "Apple Watch SE 3 (40mm, GPS)",
+    "brand": "Apple",
+    "category": "Wearables",
+    "source": "https://www.londondrugs.com/products/apple-watch-se-3-gps-40-mm-starlight-meh34ama/p/L3199358",
+    "url": "https://cdn.cs.1worldsync.com/ae/b2/aeb2760e-76bc-4109-b972-49dab7c0e564.jpg"
+  },
+  {
+    "id": "noise-colorfit-ultra-4",
+    "name": "Noise ColorFit Ultra 4",
+    "brand": "Noise",
+    "category": "Wearables",
+    "source": "https://www.cashify.in/noise-colorfit-ultra-4-smartwatch-price-in-india",
+    "url": "https://s3b.cashify.in/gpro/uploads/2023/07/07152527/noise-colorfit-ultra-4-front.jpg"
+  },
+  {
+    "id": "noisefit-endeavour",
+    "name": "NoiseFit Endeavour",
+    "brand": "Noise",
+    "category": "Wearables",
+    "source": "https://www.gonoise.com/products/noisefit-endeavour-smartwatch",
+    "url": "https://www.gonoise.com/cdn/shop/files/1_1a84556b-5670-48c3-96fb-d53d11a94933.png?v=1701755740"
+  },
+  {
+    "id": "noise-caliber-3-go",
+    "name": "Noise ColorFit Caliber 3 Go",
+    "brand": "Noise",
+    "category": "Wearables",
+    "source": "https://www.swiggy.com/instamart/p/noise-caliber-3-go-smart-watch-jet-black-5PFH2RMV5I",
+    "url": "https://instamart-media-assets.swiggy.com/swiggy/image/upload/fl_lossy%2Cf_auto%2Cq_auto%2Ch_600/NI_CATALOG/IMAGES/ciw/2026/2/20/303c880e-f032-484a-bb9a-a5b430ee192f_5PFH2RMV5I_MN_19022026.png"
+  },
+  {
+    "id": "logitech-mx-master-3s",
+    "name": "Logitech MX Master 3S",
+    "brand": "Logitech",
+    "category": "Accessories",
+    "source": "https://www.panamericana.com.co/mouse-inalambrico-mx-master-3s-blanco-logitech-645909/p",
+    "url": "https://panamericana.vtexassets.com/arquivos/ids/475690/mouse-inalambrico-mx-master-3s-blanco-logitech-1-97855175366.jpg?v=638091540195570000"
+  },
+  {
+    "id": "apple-20w-usb-c-adapter",
+    "name": "Apple 20W USB-C Power Adapter",
+    "brand": "Apple",
+    "category": "Accessories",
+    "source": "https://www.apple.com/in/shop/product/MUVR3HN/A/20w-usb-c-power-adapter",
+    "url": "https://store.storeimages.cdn-apple.com/1/as-images.apple.com/is/MUVR3_AV1?wid=1000&hei=1000&fmt=jpeg&qlt=95"
+  }
+]

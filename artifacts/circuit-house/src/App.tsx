@@ -763,9 +763,12 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
 
 /** Product photo when one is set; otherwise a tile with the brand and a category icon. */
 function ProductVisual({ product, size = 'card' }: { product: Product; size?: 'card' | 'thumb' }) {
-  const [imageFailed, setImageFailed] = useState(false);
-  if (product.image && !imageFailed) {
-    return <img src={product.image} alt={product.name} onError={() => setImageFailed(true)} data-testid={`img-product-${product.id}`} />;
+  const [failedImage, setFailedImage] = useState<string | null>(null);
+  if (product.image && product.image !== failedImage) {
+    const src = product.image.startsWith('/')
+      ? `${import.meta.env.BASE_URL}${product.image.slice(1)}`
+      : product.image;
+    return <img src={src} alt={product.name} width={800} height={800} loading="lazy" decoding="async" onError={() => setFailedImage(product.image)} data-testid={`img-product-${product.id}`} />;
   }
   const Icon = CATEGORY_ICONS[product.category] ?? ShoppingBag;
   return (

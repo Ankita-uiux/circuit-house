@@ -11,7 +11,7 @@ A demo Indian electronics store (class project) with **Ask Circuit**, an AI shop
 - Prices are in **Indian rupees**, formatted `₹1,19,900` (en-IN). Never use dollars.
 - **No invented data:** no fake ratings/reviews, discounts, bank offers or stock claims. Prices are *reference prices* with a source link and date.
 - The UI may follow **Croma's layout and shopping flow**, but must **not** copy Croma's logo, name or branding. Circuit House has its own logo (teal rounded square with a "C" mark, wordmark "circuit**house**").
-- Use only images we're allowed to use (Unsplash free photos with credit, Icecat open-catalogue images, or drawn SVG art). No retailer/brand product photos.
+- The owner approved real product photos for the catalog (13 Oct 2026), with a consistent square white background and centered framing. Source references are recorded in `scripts/catalog-image-sources.json`. Keep the existing Unsplash credits for banner photos.
 - Keep explanations simple; the owner is a design student, not a developer.
 
 ## Where it runs
@@ -93,7 +93,7 @@ From 5 student interviews + a JTBD list (in the owner's files): students set a f
 - **Tables are created by the server on start** (`ensureSchema`, idempotent `CREATE TABLE / ADD COLUMN IF NOT EXISTS`) because `drizzle-kit push` failed silently on Render. Keep `ensure-schema.ts` and `lib/db/src/schema/*` in sync.
 - **One Render service** serves both API and storefront to stay on the free tier.
 - **Catalog lives in code** (`catalog.ts`), not the DB, so prices/sources are reviewable in git. The assistant receives brand, specs, INR price and tags.
-- **Icecat images** are looked up at runtime on Render by exact manufacturer code (`icecat: {brand, productCode}` on 5 products); only `https://*.icecat.biz` URLs are accepted; misses keep the brand tile.
+- **Catalog images** are bundled as local 800 × 800 WebP assets in `artifacts/circuit-house/public/catalog/`. `scripts/prepare-catalog-images.py` rebuilds them from the recorded sources. Icecat remains a fallback for unassigned products with a manufacturer code; misses keep the brand tile.
 - **Chat logging never blocks the chat**; session id is sent in the `x-chat-session` header (stored in sessionStorage).
 - Admin password is sent as `x-admin-password`; it is never logged.
 

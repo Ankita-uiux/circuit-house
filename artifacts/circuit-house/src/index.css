@@ -527,7 +527,7 @@
 .brand-tile-thumb { gap:0; }
 .brand-tile-thumb svg { width:24px;height:24px; }
 .cart-thumb { overflow:hidden; }
-.cart-thumb img { width:100%;height:100%;object-fit:cover; }
+.cart-thumb img { display:block;width:100%;height:100%;object-fit:contain;background:#fff; }
 
 .product-description { height:auto;min-height:34px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical; }
 .product-specs { list-style:none;margin:10px 0 12px;padding:0;display:flex;flex-direction:column;gap:3px;min-height:54px; }
