@@ -273,3 +273,20 @@
 .cx-slide-art { max-height: 330px; }
 @media (max-width: 860px) { .cx-slide { height: 380px; } }
 @media (max-width: 640px) { .cx-slide { height: auto; min-height: 430px; align-content: center; } }
+
+/* Banners with a real photo: photo fills the right side and fades into the banner colour */
+.cx-slide-photo { position: absolute; top: 0; right: 0; bottom: 0; width: 58%; z-index: -1; }
+.cx-slide-photo img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 38%); mask-image: linear-gradient(90deg, transparent 0%, #000 38%); }
+.cx-photo-credit { position: absolute; right: 12px; bottom: 10px; font-size: 10px; color: #ffffffcc; text-decoration: none; background: #0006; padding: 3px 7px; border-radius: 999px; }
+.cx-photo-credit:hover { color: #fff; text-decoration: underline; }
+.cx-slide.has-photo .cx-slide-copy { max-width: 560px; }
+@media (max-width: 860px) {
+  .cx-slide-photo { width: 60%; }
+}
+@media (max-width: 640px) {
+  .cx-slide-photo { width: 100%; }
+  .cx-slide-photo img { -webkit-mask-image: none; mask-image: none; }
+  .cx-slide-photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, #000000b3 0%, #00000099 55%, #000000cc 100%); }
+  .cx-photo-credit { z-index: 1; top: 10px; right: 10px; bottom: auto; }
+}

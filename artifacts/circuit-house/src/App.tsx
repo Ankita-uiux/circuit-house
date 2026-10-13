@@ -157,10 +157,12 @@ function Header({
   );
 }
 
-type Slide = { id: string; kicker: string; title: ReactNode; text: string; cta: string; tone: string; action: () => void; chips?: string[]; art?: ReactNode; finePrint?: string };
+type SlidePhoto = { src: string; alt: string; credit: string; creditUrl: string };
+type Slide = { id: string; kicker: string; title: ReactNode; text: string; cta: string; tone: string; action: () => void; chips?: string[]; art?: ReactNode; photo?: SlidePhoto; finePrint?: string };
 
 function HeroCarousel({ slides }: { slides: Slide[] }) {
   const [index, setIndex] = useState(0);
+  const [brokenPhotos, setBrokenPhotos] = useState<Record<string, boolean>>({});
   const [paused, setPaused] = useState(false);
   useEffect(() => {
     if (paused || slides.length < 2) return;
@@ -171,9 +173,16 @@ function HeroCarousel({ slides }: { slides: Slide[] }) {
   if (!slides.length) return null;
   const slide = slides[index % slides.length];
   const go = (step: number) => setIndex((current) => (current + step + slides.length) % slides.length);
+  const showPhoto = Boolean(slide.photo && !brokenPhotos[slide.id]);
   return (
     <section className="cx-hero" aria-roledescription="carousel" aria-label="Featured" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
-      <div className={`cx-slide cx-slide-${slide.tone}`} key={slide.id} aria-roledescription="slide" aria-label={`${index + 1} of ${slides.length}`}>
+      <div className={`cx-slide cx-slide-${slide.tone}${showPhoto ? ' has-photo' : ''}`} key={slide.id} aria-roledescription="slide" aria-label={`${index + 1} of ${slides.length}`}>
+        {showPhoto && slide.photo && (
+          <div className="cx-slide-photo">
+            <img src={slide.photo.src} alt={slide.photo.alt} onError={() => setBrokenPhotos((current) => ({ ...current, [slide.id]: true }))} data-testid={`img-hero-${slide.id}`} />
+            <a className="cx-photo-credit" href={slide.photo.creditUrl} target="_blank" rel="noreferrer">Photo: {slide.photo.credit} / Unsplash</a>
+          </div>
+        )}
         <div className="cx-slide-copy">
           <span className="cx-slide-kicker">{slide.kicker}</span>
           <h1>{slide.title}</h1>
@@ -181,7 +190,7 @@ function HeroCarousel({ slides }: { slides: Slide[] }) {
           {slide.chips && <ul className="cx-slide-chips">{slide.chips.map((chip) => <li key={chip}>{chip}</li>)}</ul>}
           <button type="button" className="cx-slide-cta" onClick={slide.action} data-testid={`button-hero-${slide.id}`}>{slide.cta} <ArrowRight size={16} /></button>
         </div>
-        {slide.art && <div className="cx-slide-art" aria-hidden="true">{slide.art}</div>}
+        {!showPhoto && slide.art && <div className="cx-slide-art" aria-hidden="true">{slide.art}</div>}
         {slide.finePrint && <span className="cx-slide-fine">{slide.finePrint}</span>}
       </div>
       <button type="button" className="cx-hero-arrow cx-hero-prev" onClick={() => go(-1)} aria-label="Previous offer"><ChevronLeft size={20} /></button>
@@ -337,6 +346,11 @@ function Home({
       text: 'Laptops, phones and earbuds for college and home, compared honestly.',
       chips: [laptopFrom ? `Laptops from ${fromText(laptopFrom)}*` : '', phoneFrom ? `5G phones from ${fromText(phoneFrom)}*` : '', earbudsFrom ? `Earbuds from ${fromText(earbudsFrom)}*` : ''].filter(Boolean),
       cta: 'Shop the fest', action: goToCatalog, art: <FestiveArt />, finePrint: fine,
+      photo: {
+        src: 'https://images.unsplash.com/photo-1483478550801-ceba5fe50e8e?auto=format&fit=crop&w=1400&q=80',
+        alt: 'A smartphone held up against glowing festive lights',
+        credit: 'Rodion Kutsaiev', creditUrl: 'https://unsplash.com/photos/person-holding-smartphone-0VGG7cqTwCo',
+      },
     },
     {
       id: 'laptops', tone: 'teal', kicker: 'Back to college',
@@ -355,6 +369,11 @@ function Home({
       text: 'Samsung, POCO, iQOO, Motorola and more, all with 5000mAh or bigger batteries.',
       chips: [phoneFrom ? `From ${fromText(phoneFrom)}*` : '', maxBattery ? `Up to ${maxBattery.toLocaleString('en-IN')}mAh battery` : '', '120Hz screens available'].filter(Boolean),
       cta: 'See phones', action: () => goToRow('phones'), art: <PhonesArt />, finePrint: fine,
+      photo: {
+        src: 'https://images.unsplash.com/photo-1598965402089-897ce52e8355?auto=format&fit=crop&w=1400&q=80',
+        alt: 'A hand holding an Android smartphone',
+        credit: 'Daniel Romero', creditUrl: 'https://unsplash.com/photos/person-holding-black-android-smartphone-aiUAxBNe3Xk',
+      },
     },
     {
       id: 'copilot', tone: 'navy', kicker: 'New · AI shopping copilot',
