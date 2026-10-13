@@ -72,6 +72,7 @@ test('web search uses the existing model, India location, domain filters and a b
   const client={responses:{create:async(input:any,config:any)=>{seen=input;options=config;return {status:'completed',output:[]}}}};
   await lookupMarket(client as Parameters<typeof lookupMarket>[0],'Osmo current price',[],catalog.map(p=>p.name));
   assert.equal(seen.model,'gpt-5-mini');assert.equal(seen.store,false);assert.equal(seen.tools[0].user_location.country,'IN');
+  assert.equal(seen.tool_choice,'required');
   assert.ok(seen.tools[0].filters.allowed_domains.includes('flipkart.com'));assert.equal(options.maxRetries,0);assert.equal(options.timeout,25000);
 });
 
