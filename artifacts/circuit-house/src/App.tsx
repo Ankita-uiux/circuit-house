@@ -1,9 +1,10 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, Headphones, Laptop, MapPin, Minus, Plus, Search, Send, ShieldCheck, ShoppingBag, ShoppingCart, Sparkles, X, MessageCircle, Smartphone, Tablet, Watch, Mouse, ExternalLink, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, Headphones, Laptop, MapPin, Minus, Plus, Search, Send, ShieldCheck, ShoppingBag, ShoppingCart, Sparkles, X, MessageCircle, Smartphone, Tablet, Watch, Mouse, Camera, Gamepad2, Tv, ExternalLink, type LucideIcon } from 'lucide-react';
+import { searchCatalog } from '../../../lib/catalog-search';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { getListProductsQueryKey, useGetShoppingAssistantReply, useListProducts } from '@workspace/api-client-react';
-import type { Product, ShoppingAssistantTurn } from '@workspace/api-client-react';
+import type { Product, ShoppingAssistantTurn, ShoppingAssistantReply } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { useToast } from '@/hooks/use-toast';
 import { ChatArt, FestiveArt, LaptopArt, PhonesArt } from './banners';
@@ -15,7 +16,7 @@ import NotFound from '@/pages/not-found';
 const queryClient = new QueryClient();
 
 type CartLine = { product: Product; quantity: number };
-type Message = { role: 'assistant' | 'user'; content: string; products?: Product[] };
+type Message = { role: 'assistant' | 'user'; content: string; products?: Product[]; market?: ShoppingAssistantReply['market'] };
 
 function readCart(): CartLine[] {
   try {
@@ -36,7 +37,7 @@ function App() {
   const addToCart = (product: Product) => {
     const existing = cart.find((line) => line.product.id === product.id);
     updateCart(existing
-      ? cart.map((line) => line.product.id === product.id ? { ...line, quantity: line.quantity + 1 } : line)
+      ? cart.map((line) => line.product.id === product.id ? { ...line, product, quantity: line.quantity + 1 } : line)
       : [...cart, { product, quantity: 1 }]);
   };
   const changeQuantity = (id: string, amount: number) => {
@@ -79,7 +80,7 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
 }
 
-const CATEGORY_ORDER = ['Phones', 'Laptops', 'Tablets', 'Audio', 'Wearables', 'Accessories'] as const;
+const CATEGORY_ORDER = ['Phones', 'Laptops', 'Tablets', 'Cameras', 'Gaming', 'TVs', 'Audio', 'Wearables', 'Accessories'] as const;
 
 const GREETING: Message = { role: 'assistant', content: 'Hi! Before we get started, what should I call you? A first name or nickname is fine.' };
 
@@ -334,6 +335,7 @@ function Home({
   const [participantName, setParticipantName] = useState('');
   const [namePending, setNamePending] = useState(false);
   const [nameError, setNameError] = useState('');
+  const [queuedQuestion, setQueuedQuestion] = useState('');
   const [facilitator] = useState(readFacilitatorMode);
   const assistant = useGetShoppingAssistantReply({ request: { headers: { 'x-chat-session': sessionId } } });
   const startNewSession = () => {
@@ -345,6 +347,7 @@ function Home({
     setParticipantName('');
     setNameError('');
     setPrompt('');
+    setQueuedQuestion('');
   };
   const catalogRef = useRef<HTMLElement>(null);
 
@@ -358,12 +361,7 @@ function Home({
 
   const categories = useMemo(() => ['Everything', ...CATEGORY_ORDER.filter((item) => products.some((product) => product.category === item))], [products]);
   const visibleProducts = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    let list = products.filter((product) => {
-      const matchesCategory = category === 'Everything' || product.category === category;
-      const matchesSearch = !query || [product.name, product.brand, product.category, product.description, ...product.specs, ...product.tags].join(' ').toLowerCase().includes(query);
-      return matchesCategory && matchesSearch;
-    });
+    let list = searchCatalog(products, search).filter((product) => category === 'Everything' || product.category === category);
     if (sort === 'price-low') list = [...list].sort((a, b) => a.price - b.price);
     if (sort === 'price-high') list = [...list].sort((a, b) => b.price - a.price);
     if (sort === 'brand') list = [...list].sort((a, b) => a.brand.localeCompare(b.brand) || a.price - b.price);
@@ -456,7 +454,8 @@ function Home({
         const saved = await response.json() as { name: string; reply: string };
         setParticipantName(saved.name);
         setMessages([GREETING, { role: 'user', content: saved.name }, { role: 'assistant', content: saved.reply }]);
-        setPrompt('');
+        setPrompt(queuedQuestion);
+        setQueuedQuestion('');
       } catch {
         setNameError('Your chat couldn’t be saved. Check your connection and send your name again.');
       } finally {
@@ -471,12 +470,17 @@ function Home({
     setMessages(nextMessages);
     setPrompt('');
     assistant.mutate({ data: { message, history } }, {
-      onSuccess: (reply) => setMessages((current) => [...current, { role: 'assistant', content: reply.reply, products: reply.products }]),
+      onSuccess: (reply) => setMessages((current) => [...current, { role: 'assistant', content: reply.reply, products: reply.products, market: reply.market }]),
       onError: () => setMessages((current) => [...current, { role: 'assistant', content: 'I couldn’t complete that request. Your message or reply may not have been saved. Please check your connection and try again.' }]),
     });
   };
 
   const heading = search.trim() ? `Results for “${search.trim()}”` : category === 'Everything' ? 'All products' : category;
+  const askAboutSearch = () => {
+    setAssistantOpen(true);
+    if (participantName) void sendPrompt(search);
+    else setQueuedQuestion(search);
+  };
 
   return (
     <div className="cx-store">
@@ -502,6 +506,7 @@ function Home({
             <ProductRow id="phones" title="Phones under ₹30,000" subtitle="Big batteries and AMOLED screens for less." products={rows.phones} onAdd={add} onViewAll={() => showCategory('Phones')} />
             <ProductRow id="audio" title="Earbuds, headphones and speakers" subtitle="Noise cancellation from ₹1,199." products={rows.audio} onAdd={add} onViewAll={() => showCategory('Audio')} />
             <ProductRow id="tablets" title="Tablets and smartwatches" subtitle="For notes, classes and staying on track." products={rows.tablets} onAdd={add} />
+            <ProductRow id="cameras" title="Cameras for creators" subtitle="Osmo, Insta360 and Sony, with exact kit variants." products={products.filter(product => product.category === 'Cameras')} onAdd={add} onViewAll={() => showCategory('Cameras')} />
           </>
         )}
 
@@ -510,6 +515,7 @@ function Home({
             <div>
               <h2 id="catalog-title">{heading}</h2>
               {productsQuery.isSuccess && <p>{visibleProducts.length} {visibleProducts.length === 1 ? 'product' : 'products'}</p>}
+              {search.trim() && <button type="button" className="cx-chip" onClick={askAboutSearch}>Check market prices with Circuit</button>}
             </div>
             <label className="cx-sort">
               <span>Sort by</span>
@@ -531,7 +537,7 @@ function Home({
           ) : products.length === 0 ? (
             <div className="cx-empty"><strong>No products yet.</strong><p>Please check back soon.</p></div>
           ) : visibleProducts.length === 0 ? (
-            <div className="cx-empty"><strong>No matches for that search.</strong><p>Try a brand, a category or a spec like “RTX” or “ANC”.</p><button type="button" className="cx-chip active" onClick={() => { setSearch(''); setCategory('Everything'); }} data-testid="button-reset-filters">Clear filters</button></div>
+            <div className="cx-empty"><strong>No local matches for that search.</strong><p>Ask Circuit to look for a sourced web listing, or try a different model or budget.</p><button type="button" className="cx-chip active" onClick={askAboutSearch}>Ask Circuit to look it up</button><button type="button" className="cx-chip" onClick={() => { setSearch(''); setCategory('Everything'); }} data-testid="button-reset-filters">Clear filters</button></div>
           ) : (
             <div className="cx-grid">
               {visibleProducts.map((product) => <ProductCard key={product.id} product={product} onAdd={() => add(product)} />)}
@@ -680,7 +686,7 @@ function AssistantPanel({
           <div className="assistant-panel-mark" aria-hidden="true"><Sparkles size={15} /></div>
           <div className="assistant-panel-titles">
             <h2 id="assistant-panel-title">Ask Circuit</h2>
-            <p>Honest picks from our catalog. No upsell.</p>
+            <p>Catalog picks and sourced market prices. No upsell.</p>
           </div>
           <button type="button" className="suggestion" onClick={onNewSession} disabled={pending} aria-label="Start a new chat">New chat</button>
           <button type="button" className="icon-button" onClick={onClose} aria-label="Close the shopping assistant" data-testid="button-close-assistant"><X size={17} /></button>
@@ -691,16 +697,24 @@ function AssistantPanel({
           {messages.map((message, index) => (
             <div key={`${index}-${message.role}`} className={`assistant-turn ${message.role}`}>
               <div className={`assistant-message ${message.role}`} data-testid={`message-${message.role}-${index}`}>
-                {message.role === 'assistant' ? <FormattedReply text={message.content} /> : message.content}
+                {message.role === 'assistant' ? <FormattedReply text={message.content} sources={message.market?.sources} /> : message.content}
+                {message.market?.status === 'used' && <div className="assistant-market-sources">
+                  <small>Market sources · {message.market.checkedAt ? new Intl.DateTimeFormat('en-IN',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Kolkata'}).format(new Date(message.market.checkedAt)) : ''}</small>
+                  <ol>{message.market.sources.map((source,i) => <li key={source.url}><a href={source.url} target="_blank" rel="noopener noreferrer">[{i+1}] {source.title}</a></li>)}</ol>
+                  <small>Prices and offer eligibility can change at retailer checkout.</small>
+                </div>}
+                {message.market?.status === 'unavailable' && <small className="assistant-market-status">Market lookup unavailable · catalog prices are dated references.</small>}
               </div>
               {!!message.products?.length && (
                 <div className="assistant-picks">
                   {message.products.map((product) => (
                     <div key={product.id} className="assistant-pick">
+                      <div className="assistant-pick-thumb"><ProductVisual product={product} size="thumb" /></div>
                       <div className="assistant-pick-info">
-                        <span className="assistant-pick-category">{product.category}</span>
+                        <span className="assistant-pick-category">{product.origin === 'market' ? 'Web listing · ' : ''}{product.category}</span>
                         <strong>{product.name}</strong>
                         <span className="assistant-pick-price">{formatPrice(product.price)}</span>
+                        {product.origin === 'market' && <a className="assistant-retailer" href={product.priceSource.url} target="_blank" rel="noopener noreferrer">{product.priceSource.label} · checked {product.priceSource.asOf}</a>}
                       </div>
                       <button type="button" className="assistant-pick-add" onClick={() => onAdd(product)} data-testid={`assistant-match-${product.id}`}><Plus size={13} /> Add to bag</button>
                     </div>
@@ -711,7 +725,7 @@ function AssistantPanel({
           ))}
           {pending && (
             <div className="assistant-turn assistant">
-              <div className="assistant-message assistant assistant-thinking" data-testid="status-assistant-thinking"><span /><span /><span /> {collectingName ? 'Starting your chat…' : 'Looking through the catalog…'}</div>
+              <div className="assistant-message assistant assistant-thinking" data-testid="status-assistant-thinking"><span /><span /><span /> {collectingName ? 'Starting your chat…' : 'Checking products and market sources…'}</div>
             </div>
           )}
         </div>
@@ -748,7 +762,8 @@ function AssistantPanel({
 }
 
 /** Renders the assistant's plain-text reply: paragraphs, "- " bullet lists, numbered lists and **bold**. */
-function FormattedReply({ text }: { text: string }) {
+function FormattedReply({ text, sources = [] }: { text: string; sources?: Array<{title:string;url:string}> }) {
+  const inline = (value: string) => renderInline(value, sources);
   const blocks = text.replace(/\r\n/g, '\n').split(/\n\s*\n/).map((block) => block.trim()).filter(Boolean);
   return (
     <>
@@ -757,36 +772,37 @@ function FormattedReply({ text }: { text: string }) {
         const bullet = /^[-•*]\s+/;
         const numbered = /^\d+[.)]\s+/;
         if (lines.every((line) => bullet.test(line))) {
-          return <ul key={blockIndex}>{lines.map((line, i) => <li key={i}>{renderInline(line.replace(bullet, ''))}</li>)}</ul>;
+          return <ul key={blockIndex}>{lines.map((line, i) => <li key={i}>{inline(line.replace(bullet, ''))}</li>)}</ul>;
         }
         if (lines.every((line) => numbered.test(line))) {
-          return <ol key={blockIndex}>{lines.map((line, i) => <li key={i}>{renderInline(line.replace(numbered, ''))}</li>)}</ol>;
+          return <ol key={blockIndex}>{lines.map((line, i) => <li key={i}>{inline(line.replace(numbered, ''))}</li>)}</ol>;
         }
         // A paragraph followed by bullets in the same block
         const firstBullet = lines.findIndex((line) => bullet.test(line));
         if (firstBullet > 0 && lines.slice(firstBullet).every((line) => bullet.test(line))) {
           return (
             <Fragment key={blockIndex}>
-              <p>{lines.slice(0, firstBullet).map((line, i) => <Fragment key={i}>{i > 0 && ' '}{renderInline(line)}</Fragment>)}</p>
-              <ul>{lines.slice(firstBullet).map((line, i) => <li key={i}>{renderInline(line.replace(bullet, ''))}</li>)}</ul>
+              <p>{lines.slice(0, firstBullet).map((line, i) => <Fragment key={i}>{i > 0 && ' '}{inline(line)}</Fragment>)}</p>
+              <ul>{lines.slice(firstBullet).map((line, i) => <li key={i}>{inline(line.replace(bullet, ''))}</li>)}</ul>
             </Fragment>
           );
         }
-        return <p key={blockIndex}>{lines.map((line, i) => <Fragment key={i}>{i > 0 && <br />}{renderInline(line)}</Fragment>)}</p>;
+        return <p key={blockIndex}>{lines.map((line, i) => <Fragment key={i}>{i > 0 && <br />}{inline(line)}</Fragment>)}</p>;
       })}
     </>
   );
 }
 
-function renderInline(text: string): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean).map((part, i) =>
-    part.startsWith('**') && part.endsWith('**') && part.length > 4
-      ? <strong key={i}>{part.slice(2, -2)}</strong>
-      : <Fragment key={i}>{part}</Fragment>,
-  );
+function renderInline(text: string, sources: Array<{title:string;url:string}> = []): ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*|\[\d+\])/g).filter(Boolean).map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) return <strong key={i}>{part.slice(2,-2)}</strong>;
+    const source = /^\[\d+\]$/.test(part) ? sources[Number(part.slice(1,-1))-1] : undefined;
+    return source ? <a key={i} href={source.url} target="_blank" rel="noopener noreferrer" title={source.title} className="assistant-citation">{part}</a> : <Fragment key={i}>{part}</Fragment>;
+  });
 }
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  Cameras: Camera, Gaming: Gamepad2, TVs: Tv,
   Phones: Smartphone, Laptops: Laptop, Tablets: Tablet, Audio: Headphones, Wearables: Watch, Accessories: Mouse,
 };
 
@@ -797,7 +813,7 @@ function ProductVisual({ product, size = 'card' }: { product: Product; size?: 'c
     const src = product.image.startsWith('/')
       ? `${import.meta.env.BASE_URL}${product.image.slice(1)}`
       : product.image;
-    return <img src={src} alt={product.name} width={800} height={800} loading="lazy" decoding="async" onError={() => setFailedImage(product.image)} data-testid={`img-product-${product.id}`} />;
+    return <img src={src} className={product.origin === 'market' ? 'market-packshot' : undefined} alt={product.name} width={800} height={800} loading="lazy" decoding="async" onError={() => setFailedImage(product.image)} data-testid={`img-product-${product.id}`} />;
   }
   const Icon = CATEGORY_ICONS[product.category] ?? ShoppingBag;
   return (
@@ -838,6 +854,11 @@ function ProductSkeleton() {
   return <div className="cx-grid" aria-label="Loading products">{[0, 1, 2, 3].map((item) => <div key={item} className="cx-card cx-card-skeleton"><div className="cx-card-media" /><div className="cx-card-body"><span /><span /><span /></div></div>)}</div>;
 }
 
+function MarketListingNote({ product }: { product: Product }) {
+  if (product.origin !== 'market') return null;
+  return <small className="market-listing-note">Web listing · <a href={product.priceSource.url} target="_blank" rel="noopener noreferrer">{product.priceSource.label}</a><br />Price checked {product.priceSource.asOf}. Demo cart only; retailer price may change.</small>;
+}
+
 function CartDrawer({ cart, changeQuantity, onClose }: { cart: CartLine[]; changeQuantity: (id: string, amount: number) => void; onClose: () => void }) {
   const subtotal = cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0);
   return (
@@ -847,7 +868,7 @@ function CartDrawer({ cart, changeQuantity, onClose }: { cart: CartLine[]; chang
         {cart.length ? <>
           <div className="drawer-items">{cart.map(({ product, quantity }) => <div className="cart-row" key={product.id}>
             <div className="cart-thumb"><ProductVisual product={product} size="thumb" /></div>
-            <div><h3>{product.name}</h3><small>{formatPrice(product.price)} each</small><div className="qty-controls"><button onClick={() => changeQuantity(product.id, -1)} aria-label={`Remove one ${product.name}`} data-testid={`button-decrease-${product.id}`}><Minus size={12} /></button><span>{quantity}</span><button onClick={() => changeQuantity(product.id, 1)} aria-label={`Add one ${product.name}`} data-testid={`button-increase-${product.id}`}><Plus size={12} /></button></div></div>
+            <div><h3>{product.name}</h3><small>{formatPrice(product.price)} each</small><MarketListingNote product={product} /><div className="qty-controls"><button onClick={() => changeQuantity(product.id, -1)} aria-label={`Remove one ${product.name}`} data-testid={`button-decrease-${product.id}`}><Minus size={12} /></button><span>{quantity}</span><button onClick={() => changeQuantity(product.id, 1)} aria-label={`Add one ${product.name}`} data-testid={`button-increase-${product.id}`}><Plus size={12} /></button></div></div>
             <div className="cart-row-price">{formatPrice(product.price * quantity)}</div>
           </div>)}</div>
           <div className="drawer-total"><div className="subtotal-line"><span>Subtotal</span><strong>{formatPrice(subtotal)}</strong></div><Link className="checkout-link" href="/checkout" onClick={onClose} data-testid="link-checkout">Continue to demo checkout <ArrowRight size={15} /></Link><div className="drawer-note">Taxes and delivery are not calculated in this demo.</div></div>
@@ -884,7 +905,7 @@ function Checkout({ cart, clearCart }: { cart: CartLine[]; clearCart: () => void
             </div> : <>
               <h2>Your order summary</h2>
               {!cart.length ? <div className="empty-state" style={{ padding: '28px 10px' }}><ShoppingBag size={22} /><strong>Your bag is empty.</strong><p>Explore the catalog and add something to see it here.</p><Link href="/" className="checkout-back" data-testid="link-empty-cart-store">Browse the store <ArrowRight size={13} /></Link></div> : <>
-                {cart.map(({ product, quantity }) => <div className="checkout-product" key={product.id}><div><div className="checkout-product-name">{product.name}</div><div className="checkout-product-meta">Qty {quantity} · {product.category}</div></div><div className="checkout-product-price">{formatPrice(product.price * quantity)}</div></div>)}
+                {cart.map(({ product, quantity }) => <div className="checkout-product" key={product.id}><div><div className="checkout-product-name">{product.name}</div><div className="checkout-product-meta">Qty {quantity} · {product.category}</div><MarketListingNote product={product} /></div><div className="checkout-product-price">{formatPrice(product.price * quantity)}</div></div>)}
                 <div className="checkout-totals"><div><span>Subtotal</span><span>{formatPrice(subtotal)}</span></div><div><span>Delivery</span><span>Not calculated</span></div><div className="grand"><span>Total in demo</span><span>{formatPrice(subtotal)}</span></div></div>
                 <button className="demo-confirm" onClick={finishDemo} data-testid="button-confirm-demo">Confirm demo checkout — no payment</button>
                 <div className="drawer-note">For demonstration only. This button does not process a payment.</div>

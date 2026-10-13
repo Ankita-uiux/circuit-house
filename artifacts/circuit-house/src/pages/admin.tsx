@@ -337,7 +337,7 @@ function AdminSettings({ password, passwordRequired, onLocked }: { password: str
                     )}
                   />
                 </div>
-                <div className="admin-range-note"><span>Both scales run from 0 to 10.</span><span>Settings guide behavior; product recommendations remain grounded in the catalog.</span></div>
+                <div className="admin-range-note"><span>Both scales run from 0 to 10.</span><span>Recommendations use catalog facts and cited market sources.</span></div>
               </section>
 
               <div className="admin-savebar">

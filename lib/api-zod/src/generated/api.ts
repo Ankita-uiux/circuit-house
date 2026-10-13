@@ -35,7 +35,8 @@ export const ListProductsResponseItem = zod.object({
   "label": zod.string(),
   "url": zod.string(),
   "asOf": zod.string().describe('Date the price was checked, e.g. "12 Oct 2026".')
-}).describe('Where the listed price came from, so shoppers can check it.')
+}).describe('Where the listed price came from, so shoppers can check it.'),
+  "origin": zod.enum(['catalog', 'market']).optional().describe('Market items are sourced external listings saved in the demo cart.')
 })
 export const ListProductsResponse = zod.array(ListProductsResponseItem)
 
@@ -74,8 +75,17 @@ export const GetShoppingAssistantReplyResponse = zod.object({
   "label": zod.string(),
   "url": zod.string(),
   "asOf": zod.string().describe('Date the price was checked, e.g. "12 Oct 2026".')
-}).describe('Where the listed price came from, so shoppers can check it.')
+}).describe('Where the listed price came from, so shoppers can check it.'),
+  "origin": zod.enum(['catalog', 'market']).optional().describe('Market items are sourced external listings saved in the demo cart.')
+})),
+  "market": zod.object({
+  "status": zod.enum(['used', 'not-needed', 'unavailable', 'disabled']),
+  "checkedAt": zod.string().nullable(),
+  "sources": zod.array(zod.object({
+  "title": zod.string(),
+  "url": zod.string()
 }))
+}).optional()
 })
 
 

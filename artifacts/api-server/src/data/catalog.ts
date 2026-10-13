@@ -12,13 +12,15 @@
  * Icecat remains a fallback for products without an assigned image.
  */
 
+import { expandedCatalog } from './catalog-expanded';
+
 type PriceSource = { label: string; url: string; asOf: string };
 
 export type CatalogProduct = {
   id: string;
   name: string;
   brand: string;
-  category: "Phones" | "Laptops" | "Tablets" | "Audio" | "Wearables" | "Accessories";
+  category: "Phones" | "Laptops" | "Tablets" | "Audio" | "Wearables" | "Accessories" | "Cameras" | "Gaming" | "TVs";
   price: number;
   description: string;
   specs: string[];
@@ -59,6 +61,7 @@ const SRC = {
 } satisfies Record<string, PriceSource>;
 
 export const catalog: CatalogProduct[] = [
+  ...expandedCatalog,
   // ---------------- Phones ----------------
   {
     id: "iphone-18-pro", name: "iPhone 18 Pro", brand: "Apple", category: "Phones", price: 164900,

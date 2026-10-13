@@ -152,6 +152,10 @@ components:
           type: ["string", "null"]
         priceSource:
           $ref: "#/components/schemas/PriceSource"
+        origin:
+          type: string
+          enum: [catalog, market]
+          description: Market items are sourced external listings saved in the demo cart.
       required: [id, name, brand, category, price, description, specs, image, tags, badge, priceSource]
     PriceSource:
       type: object
@@ -196,6 +200,25 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Product"
+        market:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [used, not-needed, unavailable, disabled]
+            checkedAt:
+              type: ["string", "null"]
+            sources:
+              type: array
+              items:
+                type: object
+                properties:
+                  title:
+                    type: string
+                  url:
+                    type: string
+                required: [title, url]
+          required: [status, checkedAt, sources]
       required: [reply, products]
     AssistantBehaviorSettings:
       type: object

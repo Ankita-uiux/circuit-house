@@ -106,7 +106,7 @@
 .cx-hero-dots button.active { width: 24px; background: #fff; }
 
 /* ---------- Category circles ---------- */
-.cx-cats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
+.cx-cats { display: grid; grid-template-columns: repeat(9, minmax(76px, 1fr)); gap: 16px; overflow-x:auto; }
 .cx-cat { display: flex; flex-direction: column; align-items: center; gap: 10px; background: transparent; border: 0; color: var(--cx-text); cursor: pointer; padding: 4px; }
 .cx-cat-circle { width: 96px; height: 96px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffffff, #e8f6f2 80%); border: 1px solid #d8e9e4; box-shadow: 0 4px 14px #0f172a0f; display: grid; place-items: center; color: var(--cx-accent-text); transition: transform .18s, border-color .18s; }
 .cx-cat-circle svg { width: 40px; height: 40px; }

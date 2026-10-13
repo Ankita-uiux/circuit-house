@@ -10,6 +10,17 @@ export interface HealthStatus {
 }
 
 /**
+ * Market items are sourced external listings saved in the demo cart.
+ */
+export type ProductOrigin = typeof ProductOrigin[keyof typeof ProductOrigin];
+
+
+export const ProductOrigin = {
+  catalog: 'catalog',
+  market: 'market',
+} as const;
+
+/**
  * Where the listed price came from, so shoppers can check it.
  */
 export interface PriceSource {
@@ -38,6 +49,8 @@ export interface Product {
   /** @nullable */
   badge: string | null;
   priceSource: PriceSource;
+  /** Market items are sourced external listings saved in the demo cart. */
+  origin?: ProductOrigin;
 }
 
 export type ShoppingAssistantTurnRole = typeof ShoppingAssistantTurnRole[keyof typeof ShoppingAssistantTurnRole];
@@ -63,9 +76,32 @@ export interface ShoppingAssistantInput {
   history: ShoppingAssistantTurn[];
 }
 
+export type ShoppingAssistantReplyMarketStatus = typeof ShoppingAssistantReplyMarketStatus[keyof typeof ShoppingAssistantReplyMarketStatus];
+
+
+export const ShoppingAssistantReplyMarketStatus = {
+  used: 'used',
+  'not-needed': 'not-needed',
+  unavailable: 'unavailable',
+  disabled: 'disabled',
+} as const;
+
+export type ShoppingAssistantReplyMarketSourcesItem = {
+  title: string;
+  url: string;
+};
+
+export type ShoppingAssistantReplyMarket = {
+  status: ShoppingAssistantReplyMarketStatus;
+  /** @nullable */
+  checkedAt: string | null;
+  sources: ShoppingAssistantReplyMarketSourcesItem[];
+};
+
 export interface ShoppingAssistantReply {
   reply: string;
   products: Product[];
+  market?: ShoppingAssistantReplyMarket;
 }
 
 export interface AssistantBehaviorSettings {

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PriceSource } from './priceSource';
+import type { ProductOrigin } from './productOrigin';
 
 export interface Product {
   id: string;
@@ -26,4 +27,6 @@ export interface Product {
   /** @nullable */
   badge: string | null;
   priceSource: PriceSource;
+  /** Market items are sourced external listings saved in the demo cart. */
+  origin?: ProductOrigin;
 }

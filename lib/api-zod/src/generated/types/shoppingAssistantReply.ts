@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Product } from './product';
+import type { ShoppingAssistantReplyMarket } from './shoppingAssistantReplyMarket';
 
 export interface ShoppingAssistantReply {
   reply: string;
   products: Product[];
+  market?: ShoppingAssistantReplyMarket;
 }

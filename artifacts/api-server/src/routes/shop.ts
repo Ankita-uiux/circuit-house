@@ -12,6 +12,8 @@ import {
 import { catalog } from "../data/catalog";
 import { withIcecatImage } from "../lib/icecat";
 import { ensureSession, logMessage, sessionIdFrom } from "../lib/chat-log";
+import { lookupMarket, type MarketResult } from '../lib/market-search';
+import { marketProductFromEvidence, marketProductPhoto, type MarketProduct } from '../lib/market-products';
 
 const router: IRouter = Router();
 
@@ -57,8 +59,15 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const { message, history } = parsed.data;
     const behaviorSettings = await getAssistantBehaviorSettings();
+    let market: MarketResult;
+    try {
+      market = await lookupMarket(openai, message, history, products.map(product => product.name));
+    } catch (error) {
+      req.log.warn({ error: String(error) }, 'Market lookup unavailable; continuing with catalog evidence');
+      market = { status: 'unavailable', checkedAt: null, sources: [], evidence: '' };
+    }
     const catalogForModel = products.map(
-      ({ id, name, brand, category, price, description, specs, tags }) => ({
+      ({ id, name, brand, category, price, description, specs, tags, priceSource }) => ({
         id,
         name,
         brand,
@@ -67,6 +76,7 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
         description,
         specs,
         tags,
+        priceSource,
       }),
     );
     const completion = await openai.chat.completions.create({
@@ -85,8 +95,18 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
                 items: { type: "string" },
                 maxItems: 3,
               },
+              externalProducts: {
+                type: 'array', maxItems: 3, items: {
+                  type: 'object', additionalProperties: false,
+                  properties: {
+                    name: {type:'string'}, brand: {type:'string'}, category: {type:'string',enum:['Phones','Laptops','Tablets','Audio','Wearables','Accessories','Cameras','Gaming','TVs']},
+                    priceInr: {type:'number'}, priceQuote: {type:'string'}, sourceIndex: {type:'integer'},
+                    specs: {type:'array',items:{type:'string'},maxItems:4}, description: {type:'string'},
+                  }, required:['name','brand','category','priceInr','priceQuote','sourceIndex','specs','description'],
+                },
+              },
             },
-            required: ["reply", "productIds"],
+            required: ["reply", "productIds", "externalProducts"],
             additionalProperties: false,
           },
         },
@@ -102,7 +122,7 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
         })),
         {
           role: "user",
-          content: `Shopper's latest message: ${message}\n\nAvailable product catalog (prices in Indian rupees, reference prices checked October 2026):\n${JSON.stringify(catalogForModel)}`,
+          content: JSON.stringify({ latestMessage: message, localCatalog: catalogForModel, marketResearch: market }),
         },
       ],
     });
@@ -111,7 +131,7 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
       throw new Error("The recommendation model returned an empty response.");
     }
 
-    const result = JSON.parse(raw) as { reply?: unknown; productIds?: unknown };
+    const result = JSON.parse(raw) as { reply?: unknown; productIds?: unknown; externalProducts?: unknown };
     const validIds = new Set(products.map((product) => product.id));
     const rawIds: unknown[] = Array.isArray(result.productIds) ? result.productIds : [];
     const recommendedIds = [...new Set(rawIds)]
@@ -120,18 +140,26 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
     const recommendedProducts = recommendedIds
       .map((id) => products.find((product) => product.id === id))
       .filter((product) => product !== undefined);
+    const external = (Array.isArray(result.externalProducts) ? result.externalProducts : [])
+      .slice(0,3).map(candidate => marketProductFromEvidence(candidate,market)).filter((product): product is MarketProduct => product !== null);
+    const externalProducts = await Promise.all([...new Map(external.map(product => [product.id,product])).values()]
+      .map(async product => ({ ...product, image: await marketProductPhoto(product.priceSource.url) })));
+    const replyProducts = [...externalProducts,...recommendedProducts].slice(0,3);
 
     const replyText =
       typeof result.reply === "string" && result.reply.trim()
         ? result.reply.trim()
         : "Tell me a little more about what you're looking for, and I'll narrow down the catalog.";
     if (sessionId) {
-      await logMessage(sessionId, "assistant", replyText, recommendedProducts.map((product) => product.id), Date.now() - startedAt);
+      const sourceLog = market.sources.length ? `\n\nMarket sources (checked ${market.checkedAt}):\n${market.sources.map((source,index) => `[${index+1}] ${source.title}: ${source.url}`).join('\n')}` : '';
+      const externalLog = externalProducts.length ? `\n\nWeb listing snapshots:\n${JSON.stringify(externalProducts)}` : '';
+      await logMessage(sessionId, "assistant", replyText + sourceLog + externalLog, replyProducts.map((product) => product.id), Date.now() - startedAt);
     }
     res.json(
       GetShoppingAssistantReplyResponse.parse({
         reply: replyText,
-        products: recommendedProducts.map(withIcecatImage),
+        products: replyProducts.map(withIcecatImage),
+        market: { status: market.status, checkedAt: market.checkedAt, sources: market.sources },
       }),
     );
   } catch (error) {

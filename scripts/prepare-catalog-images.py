@@ -19,11 +19,17 @@ OUTPUT = ROOT / "artifacts/circuit-house/public/catalog"
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--download", action="store_true")
+    parser.add_argument("--only-missing", action="store_true", help="Preserve all existing catalog images.")
+    parser.add_argument("--ids", nargs="*", help="Rebuild only these product IDs.")
     args = parser.parse_args()
     products = json.loads((ROOT / "scripts/catalog-image-sources.json").read_text(encoding="utf-8"))
     ORIGINALS.mkdir(parents=True, exist_ok=True)
     OUTPUT.mkdir(parents=True, exist_ok=True)
     for product in products:
+        if args.ids and product["id"] not in args.ids:
+            continue
+        if args.only_missing and (OUTPUT / (product["id"] + ".webp")).exists():
+            continue
         original = ORIGINALS / product["id"]
         if args.download:
             with urlopen(product["url"], timeout=30) as response:
