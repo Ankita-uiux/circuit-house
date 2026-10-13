@@ -53,6 +53,7 @@ test('a sourced outside-catalog listing becomes a stable, cart-compatible produc
   assert.ok(product.id.startsWith('market-'));assert.equal(product.origin,'market');assert.equal(product.price,183990);
   assert.equal(product.priceSource.url,source.url);
   assert.equal(product.id,marketProductFromEvidence(candidate,evidence)!.id);
+  assert.ok(marketProductFromEvidence({...candidate,priceQuote:'₹183990'},evidence));
   const restored=JSON.parse(JSON.stringify([{product,quantity:2}]));
   assert.equal(restored[0].product.price*restored[0].quantity,367980);
   assert.equal(restored[0].product.origin,'market');

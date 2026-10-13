@@ -26,11 +26,14 @@ export function marketProductFromEvidence(input: unknown, market: MarketResult):
   if (typeof p.sourceIndex !== 'number' || !Number.isInteger(p.sourceIndex)) return null;
   const source = market.sources[p.sourceIndex-1];
   if (!source || !isProductListing(source.url)) return null;
-  if (typeof p.priceQuote !== 'string' || !market.evidence.includes(p.priceQuote)) return null;
+  if (typeof p.priceQuote !== 'string') return null;
   const quoted = p.priceQuote.match(/(?:₹|Rs\.?|INR)\s*([\d,]+(?:\.\d{1,2})?)/i);
   const price = quoted ? Number(quoted[1].replaceAll(',','')) : NaN;
   if (!Number.isFinite(price) || price <= 0 || price > 10_000_000 || p.priceInr !== price) return null;
-  if (!normalize(source.title + ' ' + market.evidence).includes(normalize(p.name))) return null;
+  const evidencePrices = [...market.evidence.matchAll(/(?:₹|Rs\.?|INR)\s*([\d,]+(?:\.\d{1,2})?)/gi)].map(match => Number(match[1].replaceAll(',','')));
+  if (!evidencePrices.includes(price)) return null;
+  const namedEvidence = normalize(source.title + ' ' + market.evidence).replaceAll(' ','');
+  if (!normalize(p.name).split(' ').every(token => namedEvidence.includes(token))) return null;
   if (!Array.isArray(p.specs) || !p.specs.every(s => typeof s === 'string' && s.length <= 200) || typeof p.description !== 'string') return null;
   const name = p.name.trim();
   return {
