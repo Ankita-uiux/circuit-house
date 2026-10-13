@@ -62,6 +62,9 @@ test('unsupported external products, invented prices and missing sources are rej
   for(const invalid of [{...candidate,priceInr:1},{...candidate,priceQuote:'₹12,345'},{...candidate,sourceIndex:2},{...candidate,name:'Invented camera model'},{...candidate,category:'Anything'}])assert.equal(marketProductFromEvidence(invalid,evidence),null);
   assert.equal(marketProductFromEvidence(candidate,{...evidence,status:'unavailable'}),null);
   assert.equal(marketProductFromEvidence(candidate,{...evidence,sources:[]}),null);
+  for (const url of ['https://www.croma.com/accessories/dslr-cameras/c/6849','https://www.flipkart.com/cameras/pr?q=sony','https://shopatsc.com/collections/cameras']) {
+    assert.equal(marketProductFromEvidence(candidate,{...evidence,sources:[{...source,url}]}),null);
+  }
 });
 
 test('web search uses the existing model, India location, domain filters and a bounded timeout',async()=>{

@@ -6,6 +6,18 @@ const CATEGORIES = new Set(['Phones','Laptops','Tablets','Audio','Wearables','Ac
 const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 export type MarketProduct = CatalogProduct & { origin: 'market' };
 
+/** Browsing and category results are useful evidence but are not cart listings. */
+export function isProductListing(value: string): boolean {
+  const safe = sourceUrl(value);
+  if (!safe) return false;
+  const url = new URL(safe), path = url.pathname;
+  if (/\/(?:search|collections?|categories|category|pr|l)(?:\/|$)|\/c\/\d+/i.test(path) || url.searchParams.has('q')) return false;
+  if (url.hostname.endsWith('croma.com')) return /\/p\/\d+/i.test(path);
+  if (url.hostname.endsWith('flipkart.com')) return /\/p\//i.test(path);
+  if (url.hostname.endsWith('amazon.in')) return /\/(?:dp|gp\/product)\/[a-z0-9]+/i.test(path);
+  return path.split('/').filter(Boolean).length >= 2;
+}
+
 /** Accept only exact cited listings with a price quote actually present in research. */
 export function marketProductFromEvidence(input: unknown, market: MarketResult): MarketProduct | null {
   if (!input || typeof input !== 'object' || market.status !== 'used' || !market.checkedAt) return null;
@@ -13,7 +25,7 @@ export function marketProductFromEvidence(input: unknown, market: MarketResult):
   if (typeof p.name !== 'string' || !p.name.trim() || p.name.length > 180 || typeof p.brand !== 'string' || !p.brand.trim() || p.brand.length > 80 || typeof p.category !== 'string' || !CATEGORIES.has(p.category)) return null;
   if (typeof p.sourceIndex !== 'number' || !Number.isInteger(p.sourceIndex)) return null;
   const source = market.sources[p.sourceIndex-1];
-  if (!source || !sourceUrl(source.url)) return null;
+  if (!source || !isProductListing(source.url)) return null;
   if (typeof p.priceQuote !== 'string' || !market.evidence.includes(p.priceQuote)) return null;
   const quoted = p.priceQuote.match(/(?:₹|Rs\.?|INR)\s*([\d,]+(?:\.\d{1,2})?)/i);
   const price = quoted ? Number(quoted[1].replaceAll(',','')) : NaN;
