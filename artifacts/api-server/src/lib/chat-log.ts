@@ -3,8 +3,8 @@ import { pool } from "@workspace/db";
 import { logger } from "./logger";
 
 /**
- * Saves shopping-assistant conversations for user testing. Logging never
- * breaks the chat: every function here swallows and logs its own errors.
+ * Saves conversations centrally for every device. Failures propagate so the
+ * caller cannot report success before the research data has been saved.
  */
 
 export const TEST_CARDS = [
@@ -20,6 +20,46 @@ export const TEST_CARDS = [
 ] as const;
 
 export const CHAT_SESSION_HEADER = "x-chat-session";
+export const NAME_GREETING = "Hi! Before we get started, what should I call you? A first name or nickname is fine.";
+export function shoppingGreeting(name: string) {
+  return `Nice to meet you, ${name}! Tell me what you’ll use it for and your budget.\n\nI’ll suggest a few options from our catalog and explain the trade-offs in plain words.`;
+}
+
+/** Atomic, idempotent onboarding. An existing session is never automatically renamed. */
+export async function startNamedSession(id: string, name: string, userAgent: string | undefined, settings: unknown) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const inserted = await client.query(
+      `INSERT INTO chat_sessions (id, title, participant_name, settings, user_agent, name_prompt_enabled)
+       VALUES ($1, $2, $2, $3, $4, true) ON CONFLICT (id) DO UPDATE
+       SET title = COALESCE(chat_sessions.title, EXCLUDED.title), participant_name = EXCLUDED.participant_name,
+           settings = COALESCE(chat_sessions.settings, EXCLUDED.settings)
+       WHERE chat_sessions.name_prompt_enabled AND chat_sessions.participant_name IS NULL RETURNING id`,
+      [id, name, JSON.stringify(settings), userAgent?.slice(0, 300) ?? null],
+    );
+    if (inserted.rowCount) {
+      await client.query(
+        `INSERT INTO chat_messages (session_id, role, content) VALUES
+         ($1, 'assistant', $2), ($1, 'user', $3), ($1, 'assistant', $4)`,
+        [id, NAME_GREETING, name, shoppingGreeting(name)],
+      );
+    }
+    const result = await client.query(`SELECT participant_name AS "participantName" FROM chat_sessions WHERE id = $1`, [id]);
+    await client.query("COMMIT");
+    return { participantName: result.rows[0].participantName as string | null };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function renameSession(id: string, title: string) {
+  const result = await pool.query(`UPDATE chat_sessions SET title = $2 WHERE id = $1 RETURNING id`, [id, title]);
+  return (result.rowCount ?? 0) > 0;
+}
 const SESSION_ID = /^[A-Za-z0-9-]{8,64}$/;
 
 export function isSessionId(value: unknown): value is string {
@@ -35,13 +75,14 @@ export function sessionIdFrom(req: Request): string | null {
 export async function ensureSession(id: string, userAgent: string | undefined, settings: unknown) {
   try {
     await pool.query(
-      `INSERT INTO chat_sessions (id, settings, user_agent) VALUES ($1, $2, $3)
+      `INSERT INTO chat_sessions (id, settings, user_agent, name_prompt_enabled) VALUES ($1, $2, $3, true)
        ON CONFLICT (id) DO UPDATE SET settings = COALESCE(chat_sessions.settings, EXCLUDED.settings),
          user_agent = COALESCE(chat_sessions.user_agent, EXCLUDED.user_agent)`,
       [id, settings === undefined ? null : JSON.stringify(settings), userAgent?.slice(0, 300) ?? null],
     );
   } catch (error) {
     logger.warn({ error: String(error) }, "Chat log: could not create session");
+    throw error;
   }
 }
 
@@ -59,6 +100,7 @@ export async function logMessage(
     );
   } catch (error) {
     logger.warn({ error: String(error) }, "Chat log: could not save message");
+    throw error;
   }
 }
 
@@ -66,23 +108,27 @@ export async function setParticipant(sessionId: string, label: string) {
   await pool.query(`UPDATE chat_sessions SET participant = $2 WHERE id = $1`, [sessionId, label || null]);
 }
 
-export async function listSessions() {
+export async function listSessions(page = 1) {
+  const pageSize = 50;
+  const count = await pool.query(`SELECT COUNT(*)::int AS total FROM chat_sessions`);
+  const total = count.rows[0].total as number;
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(total / pageSize)));
   const { rows } = await pool.query(`
-    SELECT s.id, s.participant, s.created_at AS "createdAt",
+    SELECT s.id, s.title, s.participant, s.participant_name AS "participantName", s.created_at AS "createdAt",
            COUNT(m.id) FILTER (WHERE m.role IN ('user', 'assistant'))::int AS "messageCount",
            COALESCE(array_agg(m.content ORDER BY m.id) FILTER (WHERE m.role = 'card'), '{}') AS cards,
            MAX(m.created_at) AS "lastActivityAt"
     FROM chat_sessions s
     LEFT JOIN chat_messages m ON m.session_id = s.id
     GROUP BY s.id
-    ORDER BY s.created_at DESC
-    LIMIT 500`);
-  return rows;
+    ORDER BY s.created_at DESC, s.id DESC
+    LIMIT $1 OFFSET $2`, [pageSize, (currentPage - 1) * pageSize]);
+  return { sessions: rows, total, page: currentPage, pageSize };
 }
 
 export async function getSession(id: string) {
   const session = await pool.query(
-    `SELECT id, participant, settings, user_agent AS "userAgent", created_at AS "createdAt" FROM chat_sessions WHERE id = $1`,
+    `SELECT id, title, participant, participant_name AS "participantName", settings, user_agent AS "userAgent", created_at AS "createdAt" FROM chat_sessions WHERE id = $1`,
     [id],
   );
   if (!session.rows[0]) return null;
@@ -102,7 +148,7 @@ export async function deleteSession(id: string) {
 /** Every saved message, one row each, for spreadsheet analysis. */
 export async function exportRows() {
   const { rows } = await pool.query(`
-    SELECT s.id AS session_id, s.participant, s.created_at AS session_started,
+    SELECT s.id AS session_id, s.title AS chat_title, s.participant, s.participant_name, s.created_at AS session_started,
            s.settings->>'empathyScale' AS empathy_scale,
            s.settings->>'goalOrientationScale' AS initiative_scale,
            m.id AS message_id, m.created_at AS message_time, m.role, m.content,

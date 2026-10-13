@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 
 /**
  * Saved shopping-assistant conversations, for user testing.
@@ -8,6 +8,9 @@ import { integer, jsonb, pgTable, serial, text, timestamp } from "drizzle-orm/pg
 export const chatSessionsTable = pgTable("chat_sessions", {
   id: text("id").primaryKey(),
   participant: text("participant"),
+  title: text("title"),
+  participantName: text("participant_name"),
+  namePromptEnabled: boolean("name_prompt_enabled").notNull().default(false),
   /** Assistant behaviour settings in effect when the session started. */
   settings: jsonb("settings"),
   userAgent: text("user_agent"),

@@ -81,7 +81,7 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
 
 const CATEGORY_ORDER = ['Phones', 'Laptops', 'Tablets', 'Audio', 'Wearables', 'Accessories'] as const;
 
-const GREETING: Message = { role: 'assistant', content: 'Hi! Tell me what you’ll use it for and your budget.\n\nI’ll suggest a few options from our catalog and explain the trade-offs in plain words.' };
+const GREETING: Message = { role: 'assistant', content: 'Hi! Before we get started, what should I call you? A first name or nickname is fine.' };
 
 /* ---------- Saved chat sessions (for user testing) ---------- */
 const SESSION_KEY = 'circuit-house-chat-session';
@@ -97,15 +97,9 @@ function newSessionId() {
   return `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
 function readSessionId() {
-  try {
-    const saved = sessionStorage.getItem(SESSION_KEY);
-    if (saved) return saved;
-    const created = newSessionId();
-    sessionStorage.setItem(SESSION_KEY, created);
-    return created;
-  } catch {
-    return newSessionId();
-  }
+  // The transcript is held in memory, so a fresh page must start a fresh log too.
+  // Never reuse an ID copied by a duplicated tab or a previous participant.
+  return newSessionId();
 }
 /** Facilitator mode: open the store with ?facilitator=1 (and ?facilitator=0 to turn it off). */
 function readFacilitatorMode() {
@@ -337,13 +331,19 @@ function Home({
   const [prompt, setPrompt] = useState('');
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [sessionId, setSessionId] = useState(readSessionId);
+  const [participantName, setParticipantName] = useState('');
+  const [namePending, setNamePending] = useState(false);
+  const [nameError, setNameError] = useState('');
   const [facilitator] = useState(readFacilitatorMode);
   const assistant = useGetShoppingAssistantReply({ request: { headers: { 'x-chat-session': sessionId } } });
   const startNewSession = () => {
+    if (assistant.isPending || namePending) return;
     const id = newSessionId();
     try { sessionStorage.setItem(SESSION_KEY, id); } catch { /* memory only */ }
     setSessionId(id);
     setMessages([GREETING]);
+    setParticipantName('');
+    setNameError('');
     setPrompt('');
   };
   const catalogRef = useRef<HTMLElement>(null);
@@ -438,9 +438,32 @@ function Home({
     },
   ];
 
-  const sendPrompt = (value = prompt) => {
+  const sendPrompt = async (value = prompt) => {
     const message = value.trim();
-    if (!message || assistant.isPending) return;
+    if (!message || assistant.isPending || namePending) return;
+    if (!participantName) {
+      if (message.length > 60 || /[\r\n\u0000-\u001f]/.test(message)) {
+        setNameError('Please enter a first name or nickname, up to 60 characters.');
+        return;
+      }
+      setNamePending(true);
+      setNameError('');
+      try {
+        const response = await fetch(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/api/shop/chat-sessions/${encodeURIComponent(sessionId)}/start`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: message }),
+        });
+        if (!response.ok) throw new Error('Name was not saved');
+        const saved = await response.json() as { name: string; reply: string };
+        setParticipantName(saved.name);
+        setMessages([GREETING, { role: 'user', content: saved.name }, { role: 'assistant', content: saved.reply }]);
+        setPrompt('');
+      } catch {
+        setNameError('Your chat couldn’t be saved. Check your connection and send your name again.');
+      } finally {
+        setNamePending(false);
+      }
+      return;
+    }
     const history: ShoppingAssistantTurn[] = messages
       .slice(-12)
       .map(({ role, content }) => ({ role, content }));
@@ -449,7 +472,7 @@ function Home({
     setPrompt('');
     assistant.mutate({ data: { message, history } }, {
       onSuccess: (reply) => setMessages((current) => [...current, { role: 'assistant', content: reply.reply, products: reply.products }]),
-      onError: () => setMessages((current) => [...current, { role: 'assistant', content: 'I couldn’t reach the matching service just now. Try browsing the catalog or send that again in a moment.' }]),
+      onError: () => setMessages((current) => [...current, { role: 'assistant', content: 'I couldn’t complete that request. Your message or reply may not have been saved. Please check your connection and try again.' }]),
     });
   };
 
@@ -529,7 +552,9 @@ function Home({
           messages={messages}
           prompt={prompt}
           setPrompt={setPrompt}
-          pending={assistant.isPending}
+          pending={assistant.isPending || namePending}
+          collectingName={!participantName}
+          nameError={nameError}
           onSend={sendPrompt}
           onAdd={add}
           onClose={() => setAssistantOpen(false)}
@@ -618,12 +643,14 @@ function FacilitatorBar({ sessionId, onNewSession }: { sessionId: string; onNewS
 }
 
 function AssistantPanel({
-  messages, prompt, setPrompt, pending, onSend, onAdd, onClose, facilitator, sessionId, onNewSession,
+  messages, prompt, setPrompt, pending, onSend, onAdd, onClose, facilitator, sessionId, onNewSession, collectingName, nameError,
 }: {
   messages: Message[];
   prompt: string;
   setPrompt: (value: string) => void;
   pending: boolean;
+  collectingName: boolean;
+  nameError: string;
   onSend: (value?: string) => void;
   onAdd: (product: Product) => void;
   onClose: () => void;
@@ -655,6 +682,7 @@ function AssistantPanel({
             <h2 id="assistant-panel-title">Ask Circuit</h2>
             <p>Honest picks from our catalog. No upsell.</p>
           </div>
+          <button type="button" className="suggestion" onClick={onNewSession} disabled={pending} aria-label="Start a new chat">New chat</button>
           <button type="button" className="icon-button" onClick={onClose} aria-label="Close the shopping assistant" data-testid="button-close-assistant"><X size={17} /></button>
         </header>
         {facilitator && <FacilitatorBar sessionId={sessionId} onNewSession={onNewSession} />}
@@ -683,13 +711,13 @@ function AssistantPanel({
           ))}
           {pending && (
             <div className="assistant-turn assistant">
-              <div className="assistant-message assistant assistant-thinking" data-testid="status-assistant-thinking"><span /><span /><span /> Looking through the catalog…</div>
+              <div className="assistant-message assistant assistant-thinking" data-testid="status-assistant-thinking"><span /><span /><span /> {collectingName ? 'Starting your chat…' : 'Looking through the catalog…'}</div>
             </div>
           )}
         </div>
 
         <div className="assistant-panel-bottom">
-          {messages.length === 1 && (
+          {!collectingName && messages.length === 3 && (
             <div className="assistant-suggestions">
               {SUGGESTIONS.map((suggestion) => (
                 <button type="button" className="suggestion" key={suggestion} onClick={() => onSend(suggestion)} data-testid={`button-suggestion-${suggestion.toLowerCase().replaceAll(' ', '-')}`}>{suggestion}</button>
@@ -704,14 +732,15 @@ function AssistantPanel({
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
               onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); onSend(); } }}
-              placeholder="Tell me what it's for and your budget…"
-              maxLength={1000}
-              aria-label="Describe what you're shopping for"
+              placeholder={collectingName ? 'Your first name or nickname…' : "Tell me what it's for and your budget…"}
+              maxLength={collectingName ? 60 : 1000}
+              aria-label={collectingName ? 'Your first name or nickname' : "Describe what you're shopping for"}
               data-testid="input-assistant-prompt"
             />
             <button className="send-button" type="submit" disabled={!prompt.trim() || pending} aria-label="Send question" data-testid="button-send-prompt"><Send size={16} /></button>
           </form>
-          <p className="assistant-footnote">Knows only the Circuit House catalog. Chats are saved for a class research study, so please don’t share personal details.</p>
+          {nameError && <p className="test-sessions-error" role="alert">{nameError}</p>}
+          <p className="assistant-footnote">Chats and your chosen name are saved for a class research study. A nickname is fine; please don’t share sensitive personal details.</p>
         </div>
       </aside>
     </>

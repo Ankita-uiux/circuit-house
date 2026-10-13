@@ -28,7 +28,7 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
     return;
   }
 
-  // Save the conversation for user testing (never blocks or breaks the chat).
+  // Acknowledge a research turn only after it has been saved centrally.
   const sessionId = sessionIdFrom(req);
   const startedAt = Date.now();
   if (sessionId) {
@@ -37,13 +37,18 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
         ({ persona, tone, initiativeGoal, empathyExamples, empathyScale, goalOrientationScale }),
       () => undefined,
     );
-    await ensureSession(sessionId, req.get("user-agent"), snapshot);
-    await logMessage(sessionId, "user", parsed.data.message);
+    try {
+      await ensureSession(sessionId, req.get("user-agent"), snapshot);
+      await logMessage(sessionId, "user", parsed.data.message);
+    } catch {
+      res.status(503).json({ error: "Your message could not be saved. Please try again." });
+      return;
+    }
   }
 
   if (!process.env.OPENAI_API_KEY) {
     req.log.error("OPENAI_API_KEY is not configured");
-    if (sessionId) await logMessage(sessionId, "error", "The shopping assistant is not configured (no OpenAI key).");
+    if (sessionId) await logMessage(sessionId, "error", "The shopping assistant is not configured (no OpenAI key).").catch(() => undefined);
     res.status(502).json({ error: "The shopping assistant is not configured." });
     return;
   }
@@ -131,7 +136,7 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
     );
   } catch (error) {
     req.log.error({ error }, "Shopping assistant request failed");
-    if (sessionId) await logMessage(sessionId, "error", `Assistant request failed: ${String(error).slice(0, 300)}`);
+    if (sessionId) await logMessage(sessionId, "error", `Assistant request failed: ${String(error).slice(0, 300)}`).catch(() => undefined);
     res.status(502).json({ error: "The shopping assistant is temporarily unavailable." });
   }
 });

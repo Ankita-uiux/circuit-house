@@ -94,7 +94,7 @@ From 5 student interviews + a JTBD list (in the owner's files): students set a f
 - **One Render service** serves both API and storefront to stay on the free tier.
 - **Catalog lives in code** (`catalog.ts`), not the DB, so prices/sources are reviewable in git. The assistant receives brand, specs, INR price and tags.
 - **Catalog images** are bundled as local 800 × 800 WebP assets in `artifacts/circuit-house/public/catalog/`. `scripts/prepare-catalog-images.py` rebuilds them from the recorded sources. Icecat remains a fallback for unassigned products with a manufacturer code; misses keep the brand tile.
-- **Chat logging never blocks the chat**; session id is sent in the `x-chat-session` header (stored in sessionStorage).
+- **Named test chats** first collect a first name or nickname and save the opening transcript atomically. The name becomes the title; old titles stay unchanged unless manually renamed in admin. Every new conversation gets a distinct session ID, sent in `x-chat-session`. Admin lists all chats in pages of 50 and refreshes every 10 seconds. Logging failures propagate so the UI does not silently report a successful unsaved turn.
 - Admin password is sent as `x-admin-password`; it is never logged.
 
 ## Open items / next steps

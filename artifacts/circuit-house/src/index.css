@@ -563,6 +563,13 @@
 .test-muted { color:#a0a497; }
 .test-session-detail { padding:16px 25px 24px; }
 .test-session-detail-head { display:flex;justify-content:space-between;gap:10px;margin-bottom:14px; }
+.test-session-title { margin:0 0 16px;color:#234a3e;font-size:20px;overflow-wrap:anywhere; }
+.test-session-rename { display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px; }
+.test-session-rename label { font-size:12px;font-weight:700; }
+.test-session-rename input { flex:1;min-width:160px;padding:10px;border:1px solid #cdd8cf;background:#fff;color:#234a3e; }
+.test-session-rename button, .test-sessions-pagination button { border:1px solid #cdd8cf;background:#fff;color:#2b5546;padding:8px 12px;font-size:12px;cursor:pointer; }
+.test-sessions-pagination { display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;margin:0 20px 22px;font-size:12px; }
+.test-sessions-pagination button:disabled { opacity:.45;cursor:not-allowed; }
 .test-sessions-delete.is-confirm { background:#b42318 !important;border-color:#b42318 !important;color:#fff !important; }
 .test-session-meta { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 16px; }
 .test-session-meta div { background:#fff;border:1px solid #e6e2d7;padding:10px 12px; }

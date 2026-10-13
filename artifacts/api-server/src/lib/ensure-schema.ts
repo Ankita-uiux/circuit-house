@@ -42,6 +42,10 @@ export async function ensureSchema() {
       latency_ms integer,
       created_at timestamp with time zone NOT NULL DEFAULT now()
     );
+    ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS title text;
+    ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS participant_name text;
+    ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS name_prompt_enabled boolean NOT NULL DEFAULT false;
+    CREATE INDEX IF NOT EXISTS chat_sessions_created_idx ON chat_sessions (created_at DESC, id DESC);
     CREATE INDEX IF NOT EXISTS chat_messages_session_idx ON chat_messages (session_id, id);
   `);
   logger.info("Database tables are ready");

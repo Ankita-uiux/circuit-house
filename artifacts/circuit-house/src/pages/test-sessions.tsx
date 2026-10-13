@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, Download, RotateCcw, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowLeft, Download, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 
 type SessionSummary = {
   id: string;
+  title: string | null;
+  participantName: string | null;
   participant: string | null;
   createdAt: string;
   lastActivityAt: string | null;
@@ -21,6 +23,8 @@ type SessionMessage = {
 
 type SessionDetail = {
   id: string;
+  title: string | null;
+  participantName: string | null;
   participant: string | null;
   createdAt: string;
   settings: { empathyScale?: number; goalOrientationScale?: number; tone?: string; persona?: string } | null;
@@ -42,25 +46,67 @@ export default function TestSessions({ password }: { password: string }) {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [renaming, setRenaming] = useState(false);
+  const [renameError, setRenameError] = useState('');
+  const loadSequence = useRef(0);
 
   const load = useCallback(async () => {
+    const sequence = ++loadSequence.current;
     setError('');
     try {
-      const response = await fetch(API, { headers });
+      const response = await fetch(`${API}?page=${page}`, { headers, cache: 'no-store' });
       if (!response.ok) throw new Error(String(response.status));
-      const body = await response.json() as { sessions: SessionSummary[] };
+      const body = await response.json() as { sessions: SessionSummary[]; total: number; page: number; pageSize: number };
+      if (sequence !== loadSequence.current) return;
       setSessions(body.sessions);
+      setTotal(body.total);
+      setPage(body.page);
+      setPageSize(body.pageSize);
     } catch {
+      if (sequence !== loadSequence.current) return;
       setError('Test sessions couldn’t be loaded. Try again in a moment.');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [password]);
+  }, [password, page]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    const refresh = () => { if (document.visibilityState === 'visible') void load(); };
+    const timer = window.setInterval(refresh, 10_000);
+    window.addEventListener('focus', refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); ++loadSequence.current; };
+  }, [load]);
+
+  const selectedId = selected?.id;
+  useEffect(() => {
+    if (!selectedId || editingTitle) return;
+    let active = true;
+    const refresh = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const response = await fetch(`${API}/${encodeURIComponent(selectedId)}`, { headers, cache: 'no-store' });
+        if (!response.ok) throw new Error('Could not refresh');
+        const detail = await response.json() as SessionDetail;
+        if (active) setSelected(detail);
+      } catch {
+        if (active) setError('Live updates couldn’t be loaded. The last saved view is still shown; try Refresh.');
+      }
+    };
+    const timer = window.setInterval(() => void refresh(), 10_000);
+    return () => { active = false; window.clearInterval(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, password, editingTitle]);
 
   const open = async (id: string) => {
     setLoadingDetail(true);
     setConfirmDelete(false);
+    setEditingTitle(false);
+    setRenameError('');
     try {
       const response = await fetch(`${API}/${encodeURIComponent(id)}`, { headers });
       if (!response.ok) throw new Error(String(response.status));
@@ -69,6 +115,27 @@ export default function TestSessions({ password }: { password: string }) {
       setError('That session couldn’t be opened.');
     } finally {
       setLoadingDetail(false);
+    }
+  };
+
+  const rename = async () => {
+    if (!selected || renaming) return;
+    const title = titleDraft.trim();
+    if (!title || title.length > 100) { setRenameError('Enter a chat name between 1 and 100 characters.'); return; }
+    setRenaming(true);
+    setRenameError('');
+    try {
+      const response = await fetch(`${API}/${encodeURIComponent(selected.id)}`, {
+        method: 'PATCH', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ title }),
+      });
+      if (!response.ok) throw new Error('Rename failed');
+      setSelected((current) => current?.id === selected.id ? { ...current, title } : current);
+      setEditingTitle(false);
+      void load();
+    } catch {
+      setRenameError('The chat name couldn’t be saved. Your edit is still here; try again.');
+    } finally {
+      setRenaming(false);
     }
   };
 
@@ -124,11 +191,21 @@ export default function TestSessions({ password }: { password: string }) {
       {selected ? (
         <div className="test-session-detail" data-testid="session-detail">
           <div className="test-session-detail-head">
-            <button type="button" className="test-sessions-back" onClick={() => { setSelected(null); setConfirmDelete(false); }} data-testid="button-back-sessions"><ArrowLeft size={14} /> All sessions</button>
+            <button type="button" className="test-sessions-back" disabled={renaming} onClick={() => { setSelected(null); setConfirmDelete(false); }} data-testid="button-back-sessions"><ArrowLeft size={14} /> All sessions</button>
+            <button type="button" disabled={renaming} onClick={() => { setTitleDraft(selected.title || formatTime(selected.createdAt)); setEditingTitle(true); setRenameError(''); }} data-testid="button-rename-session"><Pencil size={13} /> Rename chat</button>
             <button type="button" className={`test-sessions-delete${confirmDelete ? ' is-confirm' : ''}`} onClick={() => void remove()} data-testid="button-delete-session"><Trash2 size={13} /> {confirmDelete ? 'Tap again to delete' : 'Delete session'}</button>
           </div>
+          <h3 className="test-session-title">{selected.title || formatTime(selected.createdAt)}</h3>
+          {editingTitle && <form className="test-session-rename" onSubmit={(event) => { event.preventDefault(); void rename(); }}>
+            <label htmlFor="chat-title">Chat name</label>
+            <input id="chat-title" value={titleDraft} onChange={(event) => setTitleDraft(event.target.value)} maxLength={100} autoFocus disabled={renaming} />
+            <button type="submit" disabled={renaming || !titleDraft.trim()}>{renaming ? 'Saving…' : 'Save name'}</button>
+            <button type="button" disabled={renaming} onClick={() => { setEditingTitle(false); setRenameError(''); }}>Cancel</button>
+          </form>}
+          {renameError && <p role="alert" className="test-sessions-error">{renameError}</p>}
           <dl className="test-session-meta">
-            <div><dt>Participant</dt><dd>{selected.participant || 'Not set'}</dd></div>
+            {selected.participantName && <div><dt>Name given in chat</dt><dd>{selected.participantName}</dd></div>}
+            {selected.participant && <div><dt>Test label</dt><dd>{selected.participant}</dd></div>}
             <div><dt>Started</dt><dd>{formatTime(selected.createdAt)}</dd></div>
             <div><dt>Empathy</dt><dd>{selected.settings?.empathyScale ?? '—'} / 10</dd></div>
             <div><dt>Initiative</dt><dd>{selected.settings?.goalOrientationScale ?? '—'} / 10</dd></div>
@@ -161,17 +238,18 @@ export default function TestSessions({ password }: { password: string }) {
       ) : sessions.length === 0 ? (
         <div className="test-sessions-empty">
           <strong>No test sessions yet.</strong>
-          <p>Open the store with <code>?facilitator=1</code> at the end of the link, start a chat, and each conversation will appear here with the cards you logged.</p>
+          <p>Start a chat on any device and enter a first name or nickname. Saved conversations appear here automatically. Use <code>?facilitator=1</code> to log test cards too.</p>
         </div>
       ) : (
         <>
-          <p className="test-sessions-summary">{sessions.length} {sessions.length === 1 ? 'session' : 'sessions'} · {totalCards} {totalCards === 1 ? 'card' : 'cards'} logged</p>
+          <p className="test-sessions-summary">{total} {total === 1 ? 'chat' : 'chats'} across all devices · Updates every 10 seconds · {totalCards} cards on this page</p>
           <div className="test-sessions-table-wrap">
             <table className="test-sessions-table">
-              <thead><tr><th>Started</th><th>Participant</th><th>Messages</th><th>Cards given</th><th /></tr></thead>
+              <thead><tr><th>Chat name</th><th>Started</th><th>Test label</th><th>Messages</th><th>Cards given</th><th /></tr></thead>
               <tbody>
                 {sessions.map((session) => (
                   <tr key={session.id}>
+                    <td><strong>{session.title || formatTime(session.createdAt)}</strong></td>
                     <td>{formatTime(session.createdAt)}</td>
                     <td>{session.participant || <span className="test-muted">Not set</span>}</td>
                     <td>{session.messageCount}</td>
@@ -182,6 +260,13 @@ export default function TestSessions({ password }: { password: string }) {
               </tbody>
             </table>
           </div>
+          <nav className="test-sessions-pagination" aria-label="Chatlog pages">
+            <button type="button" disabled={page === 1} onClick={() => setPage(1)}>First</button>
+            <button type="button" disabled={page === 1} onClick={() => setPage(page - 1)}>Previous</button>
+            <span>Page {page} of {Math.max(1, Math.ceil(total / pageSize))}</span>
+            <button type="button" disabled={page * pageSize >= total} onClick={() => setPage(page + 1)}>Next</button>
+            <button type="button" disabled={page * pageSize >= total} onClick={() => setPage(Math.ceil(total / pageSize))}>Last</button>
+          </nav>
         </>
       )}
     </section>

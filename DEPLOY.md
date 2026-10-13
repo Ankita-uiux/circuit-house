@@ -29,6 +29,10 @@ The server creates its database table automatically the first time it starts.
 
 ## User testing (saved chats)
 
+- New chats first ask for a first name or nickname. It becomes the chat title in `/admin`; dates and times are retained. Existing chats keep their date-based titles. Open any chat and choose **Rename chat** to change its title without changing the original participant name or transcript.
+- All devices save to the same database. The admin list and open transcript refresh every 10 seconds while the page is visible. Use the page controls to browse all logs; there is no longer a newest-500 cutoff. **Download CSV** exports all pages.
+- Use **New chat** (or the facilitator's **New participant**) between test participants. Refreshing the storefront also begins a new conversation, because the on-screen transcript is not persisted. A failed name or message save is shown as an error instead of being silently ignored.
+
 - Every Ask Circuit conversation is saved to the database (table `chat_sessions` and `chat_messages`), with the assistant settings in effect when it started.
 - **Facilitator mode:** open the store with `?facilitator=1` at the end of the link (for example `https://circuit-house.onrender.com/?facilitator=1`). The chat panel then shows a facilitator bar: type the participant label (P1, P2…), tap a card (01–09) at the moment you hand it over, and use **New participant** (tap twice) before the next person. Use `?facilitator=0` to turn it off on that device.
 - **Results:** `/admin` → **Test sessions** lists every session with its cards. Open one to read the transcript with card moments highlighted, or **Download CSV** for a spreadsheet of every message.

@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { requireAdmin } from "../lib/admin-auth";
+import { getAssistantBehaviorSettings } from "../lib/assistant-behavior";
 import {
   TEST_CARDS,
   deleteSession,
@@ -10,9 +11,52 @@ import {
   listSessions,
   logMessage,
   setParticipant,
+  startNamedSession,
+  shoppingGreeting,
+  renameSession,
 } from "../lib/chat-log";
 
 const router: IRouter = Router();
+
+router.post("/shop/chat-sessions/:id/start", async (req, res): Promise<void> => {
+  const { id } = req.params;
+  const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+  if (!isSessionId(id) || !name || name.length > 60 || /[\r\n\u0000-\u001f]/.test(name)) {
+    res.status(400).json({ error: "Please enter a first name or nickname (up to 60 characters)." });
+    return;
+  }
+  try {
+    const settings = await getAssistantBehaviorSettings();
+    const session = await startNamedSession(id, name, req.get("user-agent"), settings);
+    if (!session.participantName) {
+      res.status(409).json({ error: "This is an older session. Start a new chat to use a name." });
+      return;
+    }
+    res.status(200).json({ name: session.participantName, reply: shoppingGreeting(session.participantName) });
+  } catch (error) {
+    req.log.error({ error }, "Could not start named chat");
+    res.status(503).json({ error: "Your chat could not be saved. Please try again." });
+  }
+});
+
+router.patch("/shop/chat-sessions/:id", requireAdmin, async (req, res): Promise<void> => {
+  const { id } = req.params;
+  const title = typeof req.body?.title === "string" ? req.body.title.trim() : "";
+  if (!isSessionId(id) || !title || title.length > 100 || /[\r\n\u0000-\u001f]/.test(title)) {
+    res.status(400).json({ error: "Enter a chat name between 1 and 100 characters." });
+    return;
+  }
+  try {
+    if (!await renameSession(id, title)) {
+      res.status(404).json({ error: "Session not found." });
+      return;
+    }
+    res.json({ title });
+  } catch (error) {
+    req.log.error({ error }, "Could not rename chat");
+    res.status(503).json({ error: "The chat name could not be saved." });
+  }
+});
 
 /** Facilitator events during a test: which card was handed over, and who the participant is. */
 router.post("/shop/chat-sessions/:id/events", async (req, res): Promise<void> => {
@@ -43,8 +87,14 @@ router.post("/shop/chat-sessions/:id/events", async (req, res): Promise<void> =>
 });
 
 router.get("/shop/chat-sessions", requireAdmin, async (req, res): Promise<void> => {
+  const page = Number(req.query.page ?? 1);
+  if (!Number.isSafeInteger(page) || page < 1) {
+    res.status(400).json({ error: "Invalid page." });
+    return;
+  }
+  res.setHeader("Cache-Control", "no-store");
   try {
-    res.json({ cards: TEST_CARDS, sessions: await listSessions() });
+    res.json({ cards: TEST_CARDS, ...await listSessions(page) });
   } catch (error) {
     req.log.error({ error }, "Could not list chat sessions");
     res.status(500).json({ error: "Sessions could not be loaded." });
@@ -53,14 +103,15 @@ router.get("/shop/chat-sessions", requireAdmin, async (req, res): Promise<void> 
 
 function csvCell(value: unknown) {
   if (value === null || value === undefined) return "";
-  const text = value instanceof Date ? value.toISOString() : String(value);
+  const raw = value instanceof Date ? value.toISOString() : String(value);
+  const text = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 router.get("/shop/chat-sessions/export.csv", requireAdmin, async (req, res): Promise<void> => {
   try {
     const rows = await exportRows();
-    const columns = ["session_id", "participant", "session_started", "empathy_scale", "initiative_scale", "message_id", "message_time", "role", "content", "product_ids", "latency_ms"];
+    const columns = ["session_id", "chat_title", "participant_name", "participant", "session_started", "empathy_scale", "initiative_scale", "message_id", "message_time", "role", "content", "product_ids", "latency_ms"];
     const lines = [columns.join(","), ...rows.map((row) => columns.map((column) => csvCell((row as Record<string, unknown>)[column])).join(","))];
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", 'attachment; filename="circuit-house-test-sessions.csv"');
