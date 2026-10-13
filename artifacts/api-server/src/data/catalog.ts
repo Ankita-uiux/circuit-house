@@ -30,6 +30,8 @@ export type CatalogProduct = {
 const SRC = {
   phonesUnder30k: { label: "91mobiles, phones under ₹30,000", url: "https://www.91mobiles.com/top-10-mobiles-below-30000-in-india", asOf: "12 Oct 2026" },
   phonesUnder50k: { label: "91mobiles, phones under ₹50,000", url: "https://www.91mobiles.com/top-10-mobiles-below-50000-in-india", asOf: "12 Oct 2026" },
+  phonesUnder20k: { label: "91mobiles, phones under ₹20,000", url: "https://www.91mobiles.com/top-10-mobiles-below-20000-in-india", asOf: "13 Oct 2026" },
+  phonesUnder40k: { label: "91mobiles, phones under ₹40,000", url: "https://www.91mobiles.com/list-of-phones/top-10-mobiles-below-40000-in-india", asOf: "13 Oct 2026" },
   iphoneHike: { label: "MySmartPrice, iPhone prices after Sept 2026 revision", url: "https://www.mysmartprice.com/personal-tech/mobiles/mobiles-news/apple-hikes-iphone-prices-in-india-after-iphone-18-pro-launch/", asOf: "Sept 2026" },
   iphone17: { label: "Beebom, iPhone 17 India price revision", url: "https://gadgets.beebom.com/news/apple-iphone-17-price-in-india-hiked-after-iphone-18-pro-launch", asOf: "10 Sept 2026" },
   iphone18Pro: { label: "Telangana Today, iPhone 18 Pro India launch", url: "https://telanganatoday.com/apple-to-launch-iphone-18-pro-series-in-india-on-sep-18", asOf: "Sept 2026" },
@@ -114,6 +116,98 @@ export const catalog: CatalogProduct[] = [
     description: "Samsung's mid-range M series with a Super AMOLED screen.",
     specs: ["6GB RAM, 128GB storage", "Snapdragon 6 Gen 3", "6.66\" Super AMOLED", "50MP main camera", "6000mAh battery"],
     image: null, tags: ["phone", "android", "budget", "samsung", "student"], badge: "Under ₹30k", priceSource: SRC.phonesUnder30k,
+  },
+
+  // Phones under ₹20,000 and ₹40,000 (added 13 Oct 2026)
+  {
+    id: "samsung-galaxy-a37", name: "Samsung Galaxy A37 5G", brand: "Samsung", category: "Phones", price: 39999,
+    description: "Samsung's mid-range A series with a Super AMOLED screen and Exynos chip.",
+    specs: ["8GB RAM, 128GB storage", "Exynos 1480", "6.7\" Super AMOLED", "50MP main camera", "5000mAh battery, 45W charging"],
+    image: null, tags: ["phone", "android", "samsung", "camera"], badge: null, priceSource: SRC.phonesUnder40k,
+  },
+  {
+    id: "nothing-phone-4a", name: "Nothing Phone (4a)", brand: "Nothing", category: "Phones", price: 38965,
+    description: "Nothing's mid-range phone with a flexible AMOLED display.",
+    specs: ["8GB RAM, 128GB storage", "Snapdragon 7s Gen 4", "6.78\" flexible AMOLED", "50MP main camera", "5400mAh battery, 50W charging"],
+    image: null, tags: ["phone", "android", "design", "camera"], badge: null, priceSource: SRC.phonesUnder40k,
+  },
+  {
+    id: "vivo-t5-pro", name: "vivo T5 Pro", brand: "vivo", category: "Phones", price: 38699,
+    description: "Very large 9020mAh battery with fast 90W charging.",
+    specs: ["8GB RAM, 128GB storage", "Snapdragon 7s Gen 4", "6.83\" AMOLED", "50MP main camera", "9020mAh battery, 90W charging"],
+    image: null, tags: ["phone", "android", "battery", "performance"], badge: null, priceSource: SRC.phonesUnder40k,
+  },
+  {
+    id: "iqoo-z11", name: "iQOO Z11 5G", brand: "iQOO", category: "Phones", price: 34999,
+    description: "Performance-focused phone with a fast Dimensity chip, good for gaming.",
+    specs: ["6GB RAM, 128GB storage", "Dimensity 7500 Turbo", "6.83\" AMOLED", "50MP main camera", "7050mAh battery, 44W charging"],
+    image: null, tags: ["phone", "android", "gaming", "performance"], badge: null, priceSource: SRC.phonesUnder40k,
+  },
+  {
+    id: "motorola-edge-70", name: "Motorola Edge 70", brand: "Motorola", category: "Phones", price: 34980,
+    description: "Slim Motorola with 256GB storage as standard.",
+    specs: ["8GB RAM, 256GB storage", "Snapdragon 7 Gen 4", "6.7\" AMOLED", "50MP main camera", "5000mAh battery, 68W charging"],
+    image: null, tags: ["phone", "android", "storage", "camera"], badge: null, priceSource: SRC.phonesUnder40k,
+  },
+  {
+    id: "oneplus-nord-ce-6", name: "OnePlus Nord CE 6 5G", brand: "OnePlus", category: "Phones", price: 33999,
+    description: "Big 8000mAh battery with 80W charging and a bright AMOLED screen.",
+    specs: ["8GB RAM, 128GB storage", "Snapdragon 7s Gen 4", "6.78\" AMOLED", "50MP main camera", "8000mAh battery, 80W charging"],
+    image: null, tags: ["phone", "android", "battery"], badge: null, priceSource: SRC.phonesUnder40k,
+  },
+  {
+    id: "realme-p4s", name: "realme P4s 5G", brand: "realme", category: "Phones", price: 32999,
+    description: "Large battery and AMOLED display at a mid-range price.",
+    specs: ["8GB RAM, 128GB storage", "Dimensity 7400 Ultra", "6.78\" AMOLED", "50MP main camera", "8000mAh battery, 80W charging"],
+    image: null, tags: ["phone", "android", "battery"], badge: null, priceSource: SRC.phonesUnder40k,
+  },
+  {
+    id: "samsung-galaxy-m17", name: "Samsung Galaxy M17 5G", brand: "Samsung", category: "Phones", price: 19999,
+    description: "Budget Samsung with a Super AMOLED screen and triple camera.",
+    specs: ["4GB RAM, 128GB storage", "Exynos 1330", "6.7\" Super AMOLED", "50MP + 5MP + 2MP cameras", "5000mAh battery, 25W charging"],
+    image: null, tags: ["phone", "android", "samsung", "budget", "student"], badge: "Under ₹20k", priceSource: SRC.phonesUnder20k,
+  },
+  {
+    id: "iqoo-z11-lite", name: "iQOO Z11 Lite 5G", brand: "iQOO", category: "Phones", price: 19497,
+    description: "Budget 5G phone with a smooth 120Hz screen.",
+    specs: ["4GB RAM, 128GB storage", "Dimensity 6300", "6.74\" LCD, 120Hz", "50MP main camera", "6500mAh battery, 44W charging"],
+    image: null, tags: ["phone", "android", "budget", "5g", "student"], badge: "Under ₹20k", priceSource: SRC.phonesUnder20k,
+  },
+  {
+    id: "poco-m8x", name: "POCO M8x 5G", brand: "POCO", category: "Phones", price: 18890,
+    description: "Huge 7900mAh battery and a big 120Hz screen for the price.",
+    specs: ["4GB RAM, 128GB storage", "Snapdragon 4 Gen 5", "6.9\" LCD, 120Hz", "50MP main camera", "7900mAh battery, 33W charging"],
+    image: null, tags: ["phone", "android", "budget", "battery", "student"], badge: "Under ₹20k", priceSource: SRC.phonesUnder20k,
+  },
+  {
+    id: "moto-g37-power", name: "Moto G37 Power 5G", brand: "Motorola", category: "Phones", price: 18250,
+    description: "Long-lasting budget Motorola with a 7000mAh battery.",
+    specs: ["4GB RAM, 128GB storage", "Dimensity 6400", "6.67\" LCD", "50MP main camera", "7000mAh battery, 30W charging"],
+    image: null, tags: ["phone", "android", "budget", "battery"], badge: "Under ₹20k", priceSource: SRC.phonesUnder20k,
+  },
+  {
+    id: "realme-c100x", name: "realme C100X", brand: "realme", category: "Phones", price: 17999,
+    description: "Entry phone with an 8000mAh battery. Only 64GB storage.",
+    specs: ["4GB RAM, 64GB storage", "Unisoc T7250", "6.8\" LCD", "50MP main camera", "8000mAh battery, 45W charging"],
+    image: null, tags: ["phone", "android", "budget", "battery"], badge: "Under ₹20k", priceSource: SRC.phonesUnder20k,
+  },
+  {
+    id: "tecno-spark-50", name: "Tecno Spark 50 5G", brand: "Tecno", category: "Phones", price: 17499,
+    description: "Affordable 5G phone with fast 45W charging.",
+    specs: ["4GB RAM, 128GB storage", "Dimensity 6400 Ultimate", "6.78\" LCD", "50MP main camera", "6500mAh battery, 45W charging"],
+    image: null, tags: ["phone", "android", "budget", "5g"], badge: "Under ₹20k", priceSource: SRC.phonesUnder20k,
+  },
+  {
+    id: "samsung-galaxy-m17e", name: "Samsung Galaxy M17e 5G", brand: "Samsung", category: "Phones", price: 16998,
+    description: "Samsung's most affordable 5G phone here.",
+    specs: ["4GB RAM, 128GB storage", "Dimensity 6300", "6.7\" LCD", "50MP + 2MP cameras", "6000mAh battery, 25W charging"],
+    image: null, tags: ["phone", "android", "samsung", "budget", "student"], badge: "Under ₹20k", priceSource: SRC.phonesUnder20k,
+  },
+  {
+    id: "lava-virat-v1-pro", name: "Lava Virat V1 Pro 5G", brand: "Lava", category: "Phones", price: 15999,
+    description: "Indian brand Lava's budget 5G phone with 6GB RAM.",
+    specs: ["6GB RAM, 128GB storage", "Unisoc T8200", "6.74\" LCD", "50MP main camera", "6000mAh battery, 18W charging"],
+    image: null, tags: ["phone", "android", "budget", "5g", "made in india"], badge: "Under ₹20k", priceSource: SRC.phonesUnder20k,
   },
 
   // ---------------- Laptops ----------------
