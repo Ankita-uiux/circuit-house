@@ -30,4 +30,6 @@ export interface ShoppingAssistantInput {
      */
   bag?: BagLine[];
   preferences?: ChatPreferences;
+  /** The shopper tapped "Talk to store expert". */
+  requestHuman?: boolean;
 }

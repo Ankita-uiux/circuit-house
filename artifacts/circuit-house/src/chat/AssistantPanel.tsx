@@ -1,5 +1,5 @@
-import { Fragment, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { ArrowDown, ChevronRight, CornerUpLeft, MessageCircle, Send, ShoppingCart, SquarePen, X } from 'lucide-react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
+import { ArrowDown, ChevronRight, CornerUpLeft, Headset, MessageCircle, Send, ShoppingCart, SquarePen, X } from 'lucide-react';
 import type { Product } from '@workspace/api-client-react';
 import { useToast } from '@/hooks/use-toast';
 import { useChatInactivity } from '@/hooks/use-chat-inactivity';
@@ -7,9 +7,10 @@ import { formatPrice } from '@/shared';
 import { useCart } from '@/cart';
 import { ChooseOptionsSheet, ProductCarousel } from './ProductCards';
 import { useChat, type ChatMessage } from './chat-context';
+import { FeedbackBar, FeedbackModal, HumanCard, StarterPrompts, ThinkingIndicator, TryAsking, TypedReply, VerbositySwitch } from './ChatExtras';
+import { FormattedReply } from './FormattedReply';
 import { TEST_CARDS, postSessionEvent, readFacilitatorMode } from './session-events';
 
-const SUGGESTIONS = ['Laptop for Figma under ₹80,000', 'Phone under ₹30,000', 'Earbuds with ANC under ₹5,000'];
 const timeFormat = new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit' });
 
 /** Floating button that opens the chat. Hidden while the panel is open. */
@@ -38,10 +39,24 @@ export function AssistantPanel() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const nearBottom = useRef(true);
   const seen = useRef(messages.length);
+  const pinned = useRef<number | null>(null);
   const [unread, setUnread] = useState<number | null>(null);
   const collectingName = !participantName;
   const cart = useCart();
   const [sheet, setSheet] = useState<Product | null>(null);
+  const [feedbackFor, setFeedbackFor] = useState<number | null>(null);
+  const finishAnimation = chat.finishAnimation;
+  const doneHandlers = useRef(new Map<number, () => void>());
+  const onDone = useCallback((index: number) => {
+    let handler = doneHandlers.current.get(index);
+    if (!handler) { handler = () => finishAnimation(index); doneHandlers.current.set(index, handler); }
+    return handler;
+  }, [finishAnimation]);
+  const feedback = (messageId: number, input: Parameters<typeof chat.giveFeedback>[1]) =>
+    chat.giveFeedback(messageId, input).catch(() => toast({ title: 'Feedback not saved', description: 'Please check your connection and try again.' }));
+  const lastAssistantIndex = messages.reduce((last, message, index) => (message.role === 'assistant' ? index : last), -1);
+  const shoppingStarted = messages.some((message, index) => message.role === 'user' && index > 1 && !/^(hi|hey|hello)\b/i.test(message.content)) || messages.some((message) => !!message.id);
+  const showStarters = !collectingName && !pending && !loading && !shoppingStarted;
   const askAbout = (product: Product) => {
     setQuote(`${product.name} · ${formatPrice(product.price)}`);
     setPrompt('');
@@ -65,12 +80,12 @@ export function AssistantPanel() {
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || cart.open) return;
+      if (event.key !== 'Escape' || cart.open || feedbackFor !== null) return;
       if (sheet) setSheet(null); else setOpen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, setOpen, sheet, cart.open]);
+  }, [open, setOpen, sheet, cart.open, feedbackFor]);
 
   const scrollToMessage = (index: number, behavior: ScrollBehavior = 'smooth') => {
     const list = listRef.current;
@@ -99,16 +114,46 @@ export function AssistantPanel() {
     if (messages.length <= previous) return;
     const last = messages[messages.length - 1];
     if (last.role === 'user') {
+      pinned.current = null;
       nearBottom.current = true;
       setUnread(null);
       requestAnimationFrame(() => scrollToBottom());
       return;
     }
     const index = messages.length - 1;
-    if (nearBottom.current) requestAnimationFrame(() => scrollToMessage(index));
+    if (nearBottom.current) { pinned.current = index; requestAnimationFrame(() => scrollToMessage(index)); }
     else setUnread(index);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length]);
+
+  // While a new reply is being revealed (and its cards appear), keep its first line at the top of the
+  // chat area until the shopper scrolls by themselves.
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const keepPinned = () => {
+      const index = pinned.current;
+      if (index === null) return;
+      const element = list.querySelector<HTMLElement>(`[data-index="${index}"]`);
+      if (!element) return;
+      const target = Math.max(0, element.offsetTop - 12);
+      if (Math.abs(list.scrollTop - target) > 2) list.scrollTop = Math.min(target, list.scrollHeight - list.clientHeight);
+    };
+    const observer = new MutationObserver(keepPinned);
+    observer.observe(list, { childList: true, subtree: true, characterData: true });
+    const release = () => { pinned.current = null; };
+    list.addEventListener('wheel', release, { passive: true });
+    list.addEventListener('touchmove', release, { passive: true });
+    list.addEventListener('keydown', release);
+    list.addEventListener('pointerdown', release);
+    return () => {
+      list.removeEventListener('pointerdown', release);
+      observer.disconnect();
+      list.removeEventListener('wheel', release);
+      list.removeEventListener('touchmove', release);
+      list.removeEventListener('keydown', release);
+    };
+  }, []);
 
   useEffect(() => { if (pending && nearBottom.current) requestAnimationFrame(() => scrollToBottom()); }, [pending]);
 
@@ -137,31 +182,51 @@ export function AssistantPanel() {
       <aside className={`assistant-panel${open ? ' is-open' : ''}`} role="dialog" aria-labelledby="assistant-panel-title" aria-hidden={!open} inert={!open} data-testid="panel-assistant">
         <header className="assistant-panel-top">
           <h2 id="assistant-panel-title">Ask Circuit <span className="assistant-beta">Beta</span></h2>
+          <button type="button" className="assistant-icon-btn" onClick={chat.requestHuman} disabled={!!pending || collectingName} aria-label="Talk to store expert" title="Talk to store expert" data-testid="button-talk-to-expert"><Headset size={18} /></button>
           <button type="button" className="assistant-icon-btn assistant-bag-btn" onClick={() => cart.setOpen(true)} aria-label={`Open bag, ${cart.count} items`} title="Bag" data-testid="button-chat-bag"><ShoppingCart size={18} />{cart.count > 0 && <span className="cx-cart-count">{cart.count}</span>}</button>
           <button type="button" className="assistant-icon-btn" onClick={chat.newChat} disabled={!!pending} aria-label="Start a new chat" title="New chat" data-testid="button-new-chat"><SquarePen size={18} /></button>
-          <button type="button" className="assistant-icon-btn" onClick={() => setOpen(false)} aria-label="Close the shopping assistant" title="Close" data-testid="button-close-assistant" data-close><X size={18} /></button>
+          <button type="button" className="assistant-icon-btn is-filled" onClick={() => setOpen(false)} aria-label="Close the shopping assistant" title="Close" data-testid="button-close-assistant"><X size={18} /></button>
         </header>
+        {!collectingName && (
+          <div className="assistant-subbar">
+            <span className="ch-muted">Replies</span>
+            <VerbositySwitch value={chat.preferences.verbosity ?? 'normal'} onChange={(verbosity) => chat.setPreferences({ ...chat.preferences, verbosity })} />
+          </div>
+        )}
         {facilitator && <FacilitatorBar sessionId={chat.sessionId} onNewSession={chat.newParticipant} />}
 
         <div className="assistant-panel-messages" ref={listRef} onScroll={onScroll} aria-live="polite" data-testid="assistant-conversation">
-          {messages.map((message, index) => (
-            <div key={`${index}-${message.role}`} data-index={index} className={`assistant-turn ${message.role}`}>
-              {message.quote && <div className="assistant-quote-in-turn"><CornerUpLeft size={12} /> <span>{message.quote}</span></div>}
-              <div className={`assistant-message ${message.role}`} data-testid={`message-${message.role}-${index}`}>
-                {message.role === 'assistant' ? <FormattedReply text={message.content} /> : message.content}
-              </div>
-              {!!message.products?.length && <ProductCarousel products={message.products} onChoose={setSheet} onAsk={askAbout} />}
-              <div className="assistant-turn-meta">
-                {message.createdAt && <time dateTime={message.createdAt}>{timeFormat.format(new Date(message.createdAt))}</time>}
-                {message.role === 'assistant' && index > 0 && !collectingName && !message.local && (
-                  <button type="button" className="assistant-reply-btn" onClick={() => replyTo(message)} aria-label="Reply to this message" data-testid={`button-reply-${index}`}><CornerUpLeft size={12} /> Reply</button>
+          {messages.map((message, index) => {
+            const isLatest = index === lastAssistantIndex;
+            const ready = !message.animate;
+            return (
+              <div key={`${index}-${message.role}`} data-index={index} className={`assistant-turn ${message.role}`}>
+                {message.quote && <div className="assistant-quote-in-turn"><CornerUpLeft size={12} /> <span>{message.quote}</span></div>}
+                {message.kind === 'human' ? <HumanCard text={message.content} /> : (
+                  <div className={`assistant-message ${message.role}`} data-testid={`message-${message.role}-${index}`}>
+                    {message.role === 'assistant'
+                      ? (message.animate ? <TypedReply text={message.content} animate onDone={onDone(index)} /> : <FormattedReply text={message.content} />)
+                      : message.content}
+                  </div>
                 )}
+                {ready && !!message.products?.length && <ProductCarousel products={message.products} onChoose={setSheet} onAsk={askAbout} />}
+                <div className="assistant-turn-meta">
+                  {message.createdAt && <time dateTime={message.createdAt}>{timeFormat.format(new Date(message.createdAt))}</time>}
+                  {message.role === 'assistant' && message.id && ready && <FeedbackBar message={message} onFeedback={(input) => void feedback(message.id!, input)} onOpenModal={() => setFeedbackFor(message.id!)} />}
+                  {message.role === 'assistant' && index > 0 && !collectingName && !message.local && ready && (
+                    <button type="button" className="assistant-reply-btn" onClick={() => replyTo(message)} aria-label="Reply to this message" data-testid={`button-reply-${index}`}><CornerUpLeft size={12} /> Reply</button>
+                  )}
+                </div>
+                {isLatest && ready && !pending && message.suggestions && <TryAsking suggestions={message.suggestions} onPick={(text) => void send(text)} />}
               </div>
-            </div>
-          ))}
+            );
+          })}
+          {showStarters && (
+            <StarterPrompts preferences={chat.preferences} onMode={(mode) => chat.setPreferences({ ...chat.preferences, mode })} onPick={(text) => void send(text)} />
+          )}
           {pending && (
             <div className="assistant-turn assistant">
-              <div className="assistant-message assistant assistant-thinking" data-testid="status-assistant-thinking"><span /><span /><span /> {pending === 'name' ? 'Starting your chat…' : 'Checking products and market sources…'}</div>
+              <ThinkingIndicator label={pending === 'name' ? 'Starting your chat…' : undefined} />
             </div>
           )}
         </div>
@@ -170,15 +235,18 @@ export function AssistantPanel() {
         )}
 
         {sheet && <ChooseOptionsSheet product={sheet} onClose={() => setSheet(null)} />}
+        {feedbackFor !== null && (
+          <FeedbackModal
+            onCancel={() => setFeedbackFor(null)}
+            onSend={async (input) => {
+              await chat.giveFeedback(feedbackFor, input);
+              setFeedbackFor(null);
+              toast({ title: 'Thanks for the feedback', description: 'It helps us improve Ask Circuit.' });
+            }}
+          />
+        )}
 
         <div className="assistant-panel-bottom">
-          {!collectingName && !pending && messages.length <= 3 && messages[messages.length - 1]?.role === 'assistant' && (
-            <div className="assistant-suggestions">
-              {SUGGESTIONS.map((suggestion) => (
-                <button type="button" className="suggestion" key={suggestion} onClick={() => void send(suggestion)} data-testid={`button-suggestion-${suggestion.toLowerCase().replaceAll(' ', '-')}`}>{suggestion}</button>
-              ))}
-            </div>
-          )}
           {quote && (
             <div className="assistant-quote-chip" data-testid="quote-chip">
               <CornerUpLeft size={13} />
@@ -281,41 +349,3 @@ function FacilitatorBar({ sessionId, onNewSession }: { sessionId: string; onNewS
   );
 }
 
-/** Renders the assistant's plain-text reply: paragraphs, "- " bullet lists, numbered lists and **bold**. */
-export function FormattedReply({ text, sources = [] }: { text: string; sources?: Array<{ title: string; url: string }> }) {
-  const inline = (value: string) => renderInline(value, sources);
-  const blocks = text.replace(/\r\n/g, '\n').split(/\n\s*\n/).map((block) => block.trim()).filter(Boolean);
-  return (
-    <>
-      {blocks.map((block, blockIndex) => {
-        const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
-        const bullet = /^[-•*]\s+/;
-        const numbered = /^\d+[.)]\s+/;
-        if (lines.every((line) => bullet.test(line))) {
-          return <ul key={blockIndex}>{lines.map((line, i) => <li key={i}>{inline(line.replace(bullet, ''))}</li>)}</ul>;
-        }
-        if (lines.every((line) => numbered.test(line))) {
-          return <ol key={blockIndex}>{lines.map((line, i) => <li key={i}>{inline(line.replace(numbered, ''))}</li>)}</ol>;
-        }
-        const firstBullet = lines.findIndex((line) => bullet.test(line));
-        if (firstBullet > 0 && lines.slice(firstBullet).every((line) => bullet.test(line))) {
-          return (
-            <Fragment key={blockIndex}>
-              <p>{lines.slice(0, firstBullet).map((line, i) => <Fragment key={i}>{i > 0 && ' '}{inline(line)}</Fragment>)}</p>
-              <ul>{lines.slice(firstBullet).map((line, i) => <li key={i}>{inline(line.replace(bullet, ''))}</li>)}</ul>
-            </Fragment>
-          );
-        }
-        return <p key={blockIndex}>{lines.map((line, i) => <Fragment key={i}>{i > 0 && <br />}{inline(line)}</Fragment>)}</p>;
-      })}
-    </>
-  );
-}
-
-function renderInline(text: string, sources: Array<{ title: string; url: string }> = []): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*|\[\d+\])/g).filter(Boolean).map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) return <strong key={i}>{part.slice(2, -2)}</strong>;
-    const source = /^\[\d+\]$/.test(part) ? sources[Number(part.slice(1, -1)) - 1] : undefined;
-    return source ? <a key={i} href={source.url} target="_blank" rel="noopener noreferrer" title={source.title} className="assistant-citation">{part}</a> : <Fragment key={i}>{part}</Fragment>;
-  });
-}

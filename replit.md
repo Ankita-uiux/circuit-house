@@ -9,7 +9,9 @@ A demo Indian electronics store (class project) with **Ask Circuit**, an AI shop
 - **Never push to GitHub without the owner's explicit OK.** Show what would go up (commits/files) and wait for "push".
 - Work only in the owner's repo **`Ankita-uiux/circuit-house`** (branch `main`). The original teammate repo `akshn18/Electronics-Shop-with-Shopping-Assistant` must **not** be changed or pushed to.
 - Prices are in **Indian rupees**, formatted `₹1,19,900` (en-IN). Never use dollars.
-- **No invented data:** no fake ratings/reviews, discounts, bank offers or stock claims. Prices are *reference prices* with a source link and date.
+- **No invented ratings or reviews:** star ratings, review counts, colours and MRP come only from the admin-triggered web lookup (`/admin` → Ratings, reviews and colours) and stay empty otherwise. Stock, pickup, delivery, store offers (EMI, CAMPUS5) and orders are clearly demo data for user testing.
+- **Never show other stores to shoppers:** web search is a data source only; replies are sanitised of Amazon/Flipkart/Croma names, links and citations, and web-found products are shown as normal Circuit House products.
+- **Do not change the assistant's persona, tone or wording rules** (another team owns them). Functional rules live in `routes/shop.ts` (`CONVERSATION_STATE_RULES`).
 - The UI may follow **Croma's layout and shopping flow**, but must **not** copy Croma's logo, name or branding. Circuit House has its own logo (teal rounded square with a "C" mark, wordmark "circuit**house**").
 - The owner approved real product photos for the catalog (13 Oct 2026), with a consistent square white background and centered framing. Source references are recorded in `scripts/catalog-image-sources.json`. Keep the existing Unsplash credits for banner photos.
 - Keep explanations simple; the owner is a design student, not a developer.
@@ -54,7 +56,14 @@ pnpm workspaces · Node 24 · TypeScript 5.9 · Express 5 · PostgreSQL + Drizzl
 | Icecat photo lookup | `lib/icecat.ts` |
 | Tables created on server start | `lib/ensure-schema.ts` (must mirror Drizzle schema in `lib/db/src/schema/*.ts`) |
 | API contract | `lib/api-spec/openapi.yaml` → generated `lib/api-client-react`, `lib/api-zod` |
-| Storefront (all store UI, chat panel, facilitator bar) | `artifacts/circuit-house/src/App.tsx` |
+| Store shell, home page | `artifacts/circuit-house/src/App.tsx` |
+| Header / footer, bag drawer, shared product UI (cards, price, rating, stock, stepper) | `src/components/layout.tsx`, `cart-drawer.tsx`, `store-ui.tsx` |
+| Bag state (shared by store, chat, checkout) | `src/cart.tsx` |
+| Chat: state + server sync, panel, cards/options sheet, extras (thinking, feedback, starters, chips, human card) | `src/chat/chat-context.tsx`, `AssistantPanel.tsx`, `ProductCards.tsx`, `ChatExtras.tsx` |
+| Product page, checkout | `src/pages/product.tsx`, `src/pages/checkout.tsx` |
+| Design system (tokens, buttons, cards, sheet, PDP, checkout) | `src/ui.css` (+ `chat.css`, `storefront.css`) |
+| Conversation state, name parsing, filters, store services, product extras, ratings lookup | `api-server/src/lib/conversation-state.ts`, `participant-name.ts`, `reply-filters.ts`, `store-services.ts`, `product-extras.ts`, `product-enrichment.ts` |
+| Orders, delivery, returns, exchange, admin ratings lookup | `api-server/src/routes/store.ts` |
 | Store styles (light theme, teal accent, Figtree font) | `artifacts/circuit-house/src/storefront.css` (tokens `--cx-*` on `:root`) |
 | Banner illustrations (SVG) | `artifacts/circuit-house/src/banners.tsx` |
 | Admin page / Test sessions viewer | `src/pages/admin.tsx`, `src/pages/test-sessions.tsx` |
@@ -97,7 +106,19 @@ From 5 student interviews + a JTBD list (in the owner's files): students set a f
 - **Named test chats** first collect a first name or nickname and save the opening transcript atomically. The name becomes the title; old titles stay unchanged unless manually renamed in admin. Every new conversation gets a distinct session ID, sent in `x-chat-session`. Admin lists all chats in pages of 50 and refreshes every 10 seconds. Logging failures propagate so the UI does not silently report a successful unsaved turn.
 - Admin password is sent as `x-admin-password`; it is never logged.
 
+## Chat behaviour (Oct 14 2026 rebuild)
+
+- Name step keeps only the first name; a shopping request sent instead of a name is answered right after the name.
+- Per-session state (`chat_sessions.state`): category, budget_max, budget_stretch, use_case, brands_include/exclude, must_haves, items_in_bag, last_discussed, verbosity, mode, plus a cache of web-found products. Updated every turn by a small model call; sent to the main model with the full saved history.
+- Category/budget/brand filters run in code before the model; no cards until the category is known; "+₹X over budget" for stretch items.
+- Intents: off-topic → one-line guardrail; human → "Our store expert will call you in 10 seconds 📞" card; store-service → demo order/return/exchange/delivery data.
+- Chat UI: docked beside the page on wide screens, survives close/refresh, New chat, Reply/quote, smart scrolling, thinking indicator, word-by-word reveal (client side), thumbs up/down + feedback modal (saved as `feedback` rows), starter prompts, Try asking chips, Short/Normal/Detailed switch, Help me choose / I know what I want.
+- Sample order IDs for testing: CH-240117, CH-240118, CH-240119. Coupon: CAMPUS5.
+
 ## Open items / next steps
+
+- After deploying, run `/admin` → **Ratings, reviews and colours** once (uses the OpenAI key, about $1–2).
+- Real token streaming from OpenAI is not implemented; replies are revealed word by word after they arrive.
 
 - **Icecat**: on the first live run, 0 of 5 products got photos. Check Render logs for lines starting `Icecat:` to see why (not found vs connection). Product codes may need changing to Icecat's MPNs.
 - More products were planned (flagship phones, laptops ₹30k–₹80k, tablets, over-ear headphones, smartwatches, power banks) from Smartprix/91mobiles pages.

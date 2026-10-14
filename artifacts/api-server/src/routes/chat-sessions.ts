@@ -20,6 +20,8 @@ import {
   logNameRetry,
   NAME_REASK,
   NAME_RETRY,
+  FEEDBACK_REASONS,
+  saveFeedback,
 } from "../lib/chat-log";
 import { normalizeState } from "../lib/conversation-state";
 import { parseNameReply } from "../lib/participant-name";
@@ -92,6 +94,33 @@ router.get("/shop/chat-sessions/:id/conversation", async (req, res): Promise<voi
   }
 });
 
+/** Thumbs up / down on a reply, with reasons and details for thumbs down. */
+router.post("/shop/chat-sessions/:id/feedback", async (req, res): Promise<void> => {
+  const { id } = req.params;
+  const body = (req.body ?? {}) as { messageId?: unknown; rating?: unknown; reasons?: unknown; details?: unknown };
+  const rating = body.rating === "up" || body.rating === "down" ? body.rating : body.rating === null ? null : undefined;
+  const reasons = Array.isArray(body.reasons) ? body.reasons.filter((item): item is string => (FEEDBACK_REASONS as readonly string[]).includes(item as string)) : [];
+  const details = typeof body.details === "string" ? body.details.trim().slice(0, 1500) : "";
+  if (!isSessionId(id) || typeof body.messageId !== "number" || !Number.isInteger(body.messageId) || rating === undefined) {
+    res.status(400).json({ error: "Invalid feedback." });
+    return;
+  }
+  if (rating === "down" && !reasons.length) {
+    res.status(400).json({ error: "Please choose at least one reason." });
+    return;
+  }
+  try {
+    if (!await saveFeedback(id, body.messageId, rating, rating === "down" ? reasons : [], rating === "down" ? details : "")) {
+      res.status(404).json({ error: "That reply was not found." });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    req.log.error({ error }, "Could not save feedback");
+    res.status(500).json({ error: "Your feedback could not be saved." });
+  }
+});
+
 router.patch("/shop/chat-sessions/:id", requireAdmin, async (req, res): Promise<void> => {
   const { id } = req.params;
   const title = typeof req.body?.title === "string" ? req.body.title.trim() : "";
@@ -128,6 +157,14 @@ router.post("/shop/chat-sessions/:id/events", async (req, res): Promise<void> =>
     }
     if (body.type === "card" && typeof body.card === "string" && (TEST_CARDS as readonly string[]).includes(body.card)) {
       await logMessage(id, "card", body.card);
+      res.json({ ok: true });
+      return;
+    }
+    if (body.type === "preferences") {
+      const prefs = (req.body ?? {}) as { verbosity?: unknown; mode?: unknown };
+      const current = normalizeState((await getSessionState(id))?.state);
+      const next = normalizeState({ ...current, verbosity: prefs.verbosity ?? current.verbosity, mode: prefs.mode === undefined ? current.mode : prefs.mode });
+      await saveSessionState(id, next);
       res.json({ ok: true });
       return;
     }

@@ -22,6 +22,7 @@ export * from './productOrigin';
 export * from './shoppingAssistantError';
 export * from './shoppingAssistantInput';
 export * from './shoppingAssistantReply';
+export * from './shoppingAssistantReplyKind';
 export * from './shoppingAssistantReplyMarket';
 export * from './shoppingAssistantReplyMarketSourcesItem';
 export * from './shoppingAssistantReplyMarketStatus';

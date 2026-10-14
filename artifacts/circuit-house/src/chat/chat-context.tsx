@@ -21,7 +21,15 @@ export type ChatMessage = {
   createdAt?: string;
   /** Shown locally only, e.g. a failed request notice. */
   local?: boolean;
+  /** "human" replies are shown as a call-back card. */
+  kind?: 'reply' | 'human' | 'off-topic';
+  suggestions?: string[];
+  feedback?: { rating: 'up' | 'down'; reasons?: string[]; details?: string } | null;
+  /** A reply that just arrived: revealed word by word. */
+  animate?: boolean;
 };
+
+export type FeedbackInput = { rating: 'up' | 'down' | null; reasons?: string[]; details?: string };
 
 export const NAME_QUESTION = 'Hi! Before we get started, what should I call you? A first name or nickname is fine.';
 const GREETING: ChatMessage = { role: 'assistant', content: NAME_QUESTION };
@@ -39,7 +47,7 @@ function storageSet(key: string, value: string | null) {
   try { if (value === null) sessionStorage.removeItem(key); else sessionStorage.setItem(key, value); } catch { /* memory only */ }
 }
 
-type SendOptions = { quote?: string | null; deferred?: boolean; hidden?: boolean };
+type SendOptions = { quote?: string | null; deferred?: boolean; hidden?: boolean; requestHuman?: boolean };
 
 type ChatContextValue = {
   sessionId: string;
@@ -63,6 +71,12 @@ type ChatContextValue = {
   newParticipant: () => void;
   /** Adds an assistant message on screen only (e.g. the inactivity reminder, which is logged separately). */
   pushLocal: (message: ChatMessage) => void;
+  /** Saves thumbs up / down on a reply. */
+  giveFeedback: (messageId: number, input: FeedbackInput) => Promise<void>;
+  /** "Talk to store expert". */
+  requestHuman: () => void;
+  /** Marks a reply as fully shown (stops the word-by-word reveal). */
+  finishAnimation: (index: number) => void;
 };
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -117,6 +131,9 @@ export function ChatProvider({ cart, children }: { cart: CartLine[]; children: R
           products: Array.isArray(row.meta?.products) ? row.meta.products as Product[] : undefined,
           market: row.meta?.market as ChatMessage['market'],
           quote: typeof row.meta?.quote === 'string' ? row.meta.quote : undefined,
+          kind: row.meta?.kind === 'human' || row.meta?.kind === 'off-topic' ? row.meta.kind : undefined,
+          suggestions: Array.isArray(row.meta?.suggestions) ? row.meta.suggestions as string[] : undefined,
+          feedback: (row.meta?.feedback ?? null) as ChatMessage['feedback'],
           createdAt: row.createdAt,
         })));
       })
@@ -139,9 +156,11 @@ export function ChatProvider({ cart, children }: { cart: CartLine[]; children: R
         deferred: options.deferred || undefined,
         bag: cartRef.current.map(({ product, quantity }) => ({ id: product.id, name: product.name, quantity, price: product.price })),
         preferences,
+        requestHuman: options.requestHuman || undefined,
       }, { headers: { 'x-chat-session': sessionId } });
       setMessages((current) => [...current, {
         id: reply.messageId ?? null, role: 'assistant', content: reply.reply, products: reply.products, market: reply.market, createdAt: new Date().toISOString(),
+        kind: reply.kind, suggestions: reply.suggestions, animate: reply.kind !== 'human',
       }]);
     } catch {
       setMessages((current) => [...current, { role: 'assistant', local: true, content: 'I couldn’t complete that request. Your message or reply may not have been saved. Please check your connection and try again.' }]);
@@ -215,10 +234,31 @@ export function ChatProvider({ cart, children }: { cart: CartLine[]; children: R
 
   const value = useMemo<ChatContextValue>(() => ({
     sessionId, open, setOpen, messages, participantName, pending, loading, error, prompt, setPrompt, quote, setQuote,
-    preferences, setPreferences, send, ask,
+    preferences,
+    setPreferences: (next) => {
+      setPreferences(next);
+      void fetch(apiUrl(`/shop/chat-sessions/${encodeURIComponent(sessionId)}/events`), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'preferences', verbosity: next.verbosity, mode: next.mode ?? null }),
+      }).catch(() => undefined);
+    },
+    send, ask,
     newChat: () => reset(true),
     newParticipant: () => reset(false),
     pushLocal: (message) => setMessages((current) => [...current, { ...message, local: true, createdAt: new Date().toISOString() }]),
+    giveFeedback: async (messageId, input) => {
+      const previous = messages.find((message) => message.id === messageId)?.feedback ?? null;
+      const next = input.rating ? { rating: input.rating, reasons: input.reasons, details: input.details } : null;
+      setMessages((current) => current.map((message) => (message.id === messageId ? { ...message, feedback: next } : message)));
+      const response = await fetch(apiUrl(`/shop/chat-sessions/${encodeURIComponent(sessionId)}/feedback`), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messageId, ...input }),
+      }).catch(() => null);
+      if (!response?.ok) {
+        setMessages((current) => current.map((message) => (message.id === messageId ? { ...message, feedback: previous } : message)));
+        throw new Error('Feedback not saved');
+      }
+    },
+    requestHuman: () => { if (participantName) void send('I’d like to talk to a store expert.', { requestHuman: true, quote: null }); },
+    finishAnimation: (index) => setMessages((current) => current.map((message, i) => (i === index && message.animate ? { ...message, animate: false } : message))),
   }), [sessionId, open, messages, participantName, pending, loading, error, prompt, quote, preferences, send, ask, reset]);
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

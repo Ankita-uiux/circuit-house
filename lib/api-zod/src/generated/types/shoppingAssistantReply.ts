@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Product } from './product';
+import type { ShoppingAssistantReplyKind } from './shoppingAssistantReplyKind';
 import type { ShoppingAssistantReplyMarket } from './shoppingAssistantReplyMarket';
 
 export interface ShoppingAssistantReply {
@@ -17,4 +18,11 @@ export interface ShoppingAssistantReply {
      * @nullable
      */
   messageId?: number | null;
+  /** human = the shopper asked for a person; shown as a call-back card. */
+  kind?: ShoppingAssistantReplyKind;
+  /**
+     * Follow-up questions for the "Try asking" chips.
+     * @maxItems 3
+     */
+  suggestions?: string[];
 }

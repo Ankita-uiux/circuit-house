@@ -174,6 +174,50 @@ export async function logMessage(
   }
 }
 
+export const FEEDBACK_REASONS = [
+  "It didn't understand my question",
+  "It didn't help me find what I needed",
+  "It provided the wrong information",
+  "The suggestions were confusing",
+  "Too much effort to use",
+  "Something else",
+] as const;
+
+/** Saves a thumbs up/down (and, for thumbs down, the reasons and details) on one assistant reply, and logs it in the transcript. */
+export async function saveFeedback(sessionId: string, messageId: number, rating: "up" | "down" | null, reasons: string[], details: string) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const target = await client.query(
+      `SELECT id FROM chat_messages WHERE id = $1 AND session_id = $2 AND role = 'assistant' FOR UPDATE`,
+      [messageId, sessionId],
+    );
+    if (!target.rowCount) {
+      await client.query("ROLLBACK");
+      return false;
+    }
+    const feedback = rating ? { rating, reasons, details: details || undefined, at: new Date().toISOString() } : null;
+    await client.query(
+      `UPDATE chat_messages SET meta = jsonb_set(COALESCE(meta, '{}'::jsonb), '{feedback}', $2::jsonb) WHERE id = $1`,
+      [messageId, JSON.stringify(feedback)],
+    );
+    const summary = rating === null ? "Feedback removed"
+      : rating === "up" ? "Thumbs up"
+      : `Thumbs down${reasons.length ? `: ${reasons.join("; ")}` : ""}${details ? ` | Details: ${details}` : ""}`;
+    await client.query(
+      `INSERT INTO chat_messages (session_id, role, content, meta) VALUES ($1, 'feedback', $2, $3)`,
+      [sessionId, `${summary} (on reply #${messageId})`, JSON.stringify({ messageId, rating, reasons, details })],
+    );
+    await client.query("COMMIT");
+    return true;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function setParticipant(sessionId: string, label: string) {
   await pool.query(`UPDATE chat_sessions SET participant = $2 WHERE id = $1`, [sessionId, label || null]);
 }

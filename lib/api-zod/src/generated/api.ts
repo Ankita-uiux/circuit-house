@@ -94,8 +94,13 @@ export const GetShoppingAssistantReplyBody = zod.object({
   "preferences": zod.object({
   "verbosity": zod.enum(['short', 'normal', 'detailed']).optional(),
   "mode": zod.union([zod.literal('help-me-choose'),zod.literal('know-what-i-want'),zod.literal(null)]).nullish()
-}).optional().describe('Shopper-chosen chat settings, saved in the conversation state and passed to the model.')
+}).optional().describe('Shopper-chosen chat settings, saved in the conversation state and passed to the model.'),
+  "requestHuman": zod.boolean().optional().describe('The shopper tapped "Talk to store expert".')
 })
+
+export const getShoppingAssistantReplyResponseSuggestionsMax = 3;
+
+
 
 export const GetShoppingAssistantReplyResponse = zod.object({
   "reply": zod.string(),
@@ -148,7 +153,9 @@ export const GetShoppingAssistantReplyResponse = zod.object({
   "url": zod.string()
 }))
 }).optional(),
-  "messageId": zod.number().int().nullish().describe('Saved message ID, used for feedback on this reply.')
+  "messageId": zod.number().int().nullish().describe('Saved message ID, used for feedback on this reply.'),
+  "kind": zod.enum(['reply', 'human', 'off-topic']).optional().describe('human = the shopper asked for a person; shown as a call-back card.'),
+  "suggestions": zod.array(zod.string()).max(getShoppingAssistantReplyResponseSuggestionsMax).optional().describe('Follow-up questions for the "Try asking" chips.')
 })
 
 

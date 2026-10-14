@@ -14,7 +14,7 @@ type SessionSummary = {
 
 type SessionMessage = {
   id: number;
-  role: 'user' | 'assistant' | 'card' | 'error';
+  role: 'user' | 'assistant' | 'card' | 'error' | 'feedback';
   content: string;
   productIds: string[];
   latencyMs: number | null;
@@ -218,7 +218,7 @@ export default function TestSessions({ password }: { password: string }) {
                   <span className="test-turn-cardlabel">Card given · {message.content}</span>
                 ) : (
                   <div className="test-turn-body">
-                    <span className="test-turn-role">{message.role === 'user' ? 'Participant' : message.role === 'assistant' ? 'Ask Circuit' : 'Error'}</span>
+                    <span className="test-turn-role">{message.role === 'user' ? 'Participant' : message.role === 'assistant' ? 'Ask Circuit' : message.role === 'feedback' ? 'Feedback' : 'Error'}</span>
                     <p>{message.content}</p>
                     {message.role === 'assistant' && (message.productIds.length > 0 || message.latencyMs) && (
                       <span className="test-turn-extra">

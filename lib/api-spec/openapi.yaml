@@ -269,6 +269,9 @@ components:
             $ref: "#/components/schemas/BagLine"
         preferences:
           $ref: "#/components/schemas/ChatPreferences"
+        requestHuman:
+          type: boolean
+          description: The shopper tapped "Talk to store expert".
       required: [message, history]
     BagLine:
       type: object
@@ -323,6 +326,16 @@ components:
         messageId:
           type: ["integer", "null"]
           description: Saved message ID, used for feedback on this reply.
+        kind:
+          type: string
+          enum: [reply, human, off-topic]
+          description: human = the shopper asked for a person; shown as a call-back card.
+        suggestions:
+          type: array
+          maxItems: 3
+          description: Follow-up questions for the "Try asking" chips.
+          items:
+            type: string
       required: [reply, products]
     AssistantBehaviorSettings:
       type: object

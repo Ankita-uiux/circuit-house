@@ -178,6 +178,8 @@ export interface ShoppingAssistantInput {
      */
   bag?: BagLine[];
   preferences?: ChatPreferences;
+  /** The shopper tapped "Talk to store expert". */
+  requestHuman?: boolean;
 }
 
 export type ShoppingAssistantReplyMarketStatus = typeof ShoppingAssistantReplyMarketStatus[keyof typeof ShoppingAssistantReplyMarketStatus];
@@ -202,6 +204,18 @@ export type ShoppingAssistantReplyMarket = {
   sources: ShoppingAssistantReplyMarketSourcesItem[];
 };
 
+/**
+ * human = the shopper asked for a person; shown as a call-back card.
+ */
+export type ShoppingAssistantReplyKind = typeof ShoppingAssistantReplyKind[keyof typeof ShoppingAssistantReplyKind];
+
+
+export const ShoppingAssistantReplyKind = {
+  reply: 'reply',
+  human: 'human',
+  'off-topic': 'off-topic',
+} as const;
+
 export interface ShoppingAssistantReply {
   reply: string;
   products: Product[];
@@ -211,6 +225,13 @@ export interface ShoppingAssistantReply {
      * @nullable
      */
   messageId?: number | null;
+  /** human = the shopper asked for a person; shown as a call-back card. */
+  kind?: ShoppingAssistantReplyKind;
+  /**
+     * Follow-up questions for the "Try asking" chips.
+     * @maxItems 3
+     */
+  suggestions?: string[];
 }
 
 export interface AssistantBehaviorSettings {
