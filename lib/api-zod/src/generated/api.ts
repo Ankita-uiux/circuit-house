@@ -36,7 +36,30 @@ export const ListProductsResponseItem = zod.object({
   "url": zod.string(),
   "asOf": zod.string().describe('Date the price was checked, e.g. "12 Oct 2026".')
 }).describe('Where the listed price came from, so shoppers can check it.'),
-  "origin": zod.enum(['catalog', 'market']).optional().describe('Market items are sourced external listings saved in the demo cart.')
+  "origin": zod.enum(['catalog', 'market']).optional().describe('Market items were found on the web; the store shows them like any other product.'),
+  "model": zod.string().optional().describe('Model name without the brand.'),
+  "colours": zod.array(zod.object({
+  "name": zod.string(),
+  "hex": zod.string()
+})).optional(),
+  "rating": zod.number().nullish().describe('Average star rating out of 5 from a real web listing, or null when none was found.'),
+  "reviewCount": zod.number().int().nullish(),
+  "mrp": zod.number().nullish().describe('List price before discount (INR), shown struck through when higher than price.'),
+  "stock": zod.object({
+  "status": zod.enum(['in_stock', 'low_stock']),
+  "label": zod.string(),
+  "count": zod.number().int().nullable()
+}).optional(),
+  "pickup": zod.object({
+  "store": zod.string(),
+  "label": zod.string()
+}).optional(),
+  "delivery": zod.object({
+  "label": zod.string()
+}).optional(),
+  "offers": zod.array(zod.string()).optional(),
+  "images": zod.array(zod.string()).optional().describe('At least two images when a photo exists (the second may repeat the first).'),
+  "overBudgetBy": zod.number().nullish().describe('Amount above the shopper\'s budget, for "+₹X over budget" labels in chat.')
 })
 export const ListProductsResponse = zod.array(ListProductsResponseItem)
 
@@ -92,7 +115,30 @@ export const GetShoppingAssistantReplyResponse = zod.object({
   "url": zod.string(),
   "asOf": zod.string().describe('Date the price was checked, e.g. "12 Oct 2026".')
 }).describe('Where the listed price came from, so shoppers can check it.'),
-  "origin": zod.enum(['catalog', 'market']).optional().describe('Market items are sourced external listings saved in the demo cart.')
+  "origin": zod.enum(['catalog', 'market']).optional().describe('Market items were found on the web; the store shows them like any other product.'),
+  "model": zod.string().optional().describe('Model name without the brand.'),
+  "colours": zod.array(zod.object({
+  "name": zod.string(),
+  "hex": zod.string()
+})).optional(),
+  "rating": zod.number().nullish().describe('Average star rating out of 5 from a real web listing, or null when none was found.'),
+  "reviewCount": zod.number().int().nullish(),
+  "mrp": zod.number().nullish().describe('List price before discount (INR), shown struck through when higher than price.'),
+  "stock": zod.object({
+  "status": zod.enum(['in_stock', 'low_stock']),
+  "label": zod.string(),
+  "count": zod.number().int().nullable()
+}).optional(),
+  "pickup": zod.object({
+  "store": zod.string(),
+  "label": zod.string()
+}).optional(),
+  "delivery": zod.object({
+  "label": zod.string()
+}).optional(),
+  "offers": zod.array(zod.string()).optional(),
+  "images": zod.array(zod.string()).optional().describe('At least two images when a photo exists (the second may repeat the first).'),
+  "overBudgetBy": zod.number().nullish().describe('Amount above the shopper\'s budget, for "+₹X over budget" labels in chat.')
 })),
   "market": zod.object({
   "status": zod.enum(['used', 'not-needed', 'unavailable', 'disabled']),

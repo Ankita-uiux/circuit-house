@@ -25,7 +25,11 @@ export type ConversationState = {
   pending_request: string | null;
   verbosity: Verbosity;
   mode: ShoppingMode | null;
+  /** Products fetched from the web in this conversation, kept so prices and details stay the same. Not sent to the model as state. */
+  web_products: CachedWebProduct[];
 };
+
+export type CachedWebProduct = { id: string; name: string; brand: string; category: string; price: number } & Record<string, unknown>;
 
 export const EMPTY_STATE: ConversationState = {
   category: null,
@@ -40,6 +44,7 @@ export const EMPTY_STATE: ConversationState = {
   pending_request: null,
   verbosity: "normal",
   mode: null,
+  web_products: [],
 };
 
 export const CATEGORIES = ["Phones", "Laptops", "Tablets", "Audio", "Wearables", "Accessories", "Cameras", "Gaming", "TVs"] as const;
@@ -78,7 +83,20 @@ export function normalizeState(input: unknown): ConversationState {
     pending_request: text(raw.pending_request, 1000),
     verbosity: raw.verbosity === "short" || raw.verbosity === "detailed" ? raw.verbosity : "normal",
     mode: raw.mode === "help-me-choose" || raw.mode === "know-what-i-want" ? raw.mode : null,
+    web_products: Array.isArray(raw.web_products)
+      ? (raw.web_products.filter((item) => {
+          if (!item || typeof item !== "object") return false;
+          const row = item as Record<string, unknown>;
+          return typeof row.id === "string" && row.id.startsWith("market-") && typeof row.name === "string" && typeof row.price === "number" && typeof row.category === "string";
+        }) as CachedWebProduct[]).slice(-20)
+      : [],
   };
+}
+
+/** The state as the model sees it (without the product cache). */
+export function stateForModel(state: ConversationState) {
+  const { web_products: _cache, pending_request: _pending, ...rest } = state;
+  return rest;
 }
 
 export type StateUpdate = {
@@ -138,7 +156,7 @@ export async function updateConversationState(
         {
           role: "user",
           content: JSON.stringify({
-            previousState: { ...previous, items_in_bag: previous.items_in_bag.map((item) => item.name), pending_request: undefined },
+            previousState: { ...stateForModel(previous), items_in_bag: previous.items_in_bag.map((item) => item.name) },
             assistantLastReply: input.lastAssistant?.slice(0, 1500) ?? null,
             quotedEarlierMessage: input.quote?.slice(0, 1000) ?? null,
             latestShopperMessage: input.message,

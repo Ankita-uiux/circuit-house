@@ -11,6 +11,7 @@ import {
 import type { AssistantBehaviorSettingsUpdate } from '@workspace/api-client-react';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import TestSessions from './test-sessions';
+import ProductData from './product-data';
 
 type SettingsForm = AssistantBehaviorSettingsUpdate;
 
@@ -357,6 +358,7 @@ function AdminSettings({ password, passwordRequired, onLocked }: { password: str
         )}
 
         <TestSessions password={password} />
+        <ProductData password={password} />
 
         <footer className="admin-footer"><span>Thoughtful tech. Clear answers.</span><span>Assistant controls <i>·</i> Circuit House</span></footer>
       </main>

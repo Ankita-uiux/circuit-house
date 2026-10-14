@@ -4,7 +4,8 @@ import { sourceUrl, type MarketResult } from './market-search';
 
 const CATEGORIES = new Set(['Phones','Laptops','Tablets','Audio','Wearables','Accessories','Cameras','Gaming','TVs']);
 const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-export type MarketProduct = CatalogProduct & { origin: 'market' };
+import type { Enrichment } from './product-extras';
+export type MarketProduct = CatalogProduct & { origin: 'market'; enrichment: Enrichment };
 
 /** Browsing and category results are useful evidence but are not cart listings. */
 export function isProductListing(value: string): boolean {
@@ -36,11 +37,19 @@ export function marketProductFromEvidence(input: unknown, market: MarketResult):
   if (!normalize(p.name).split(' ').every(token => namedEvidence.includes(token))) return null;
   if (!Array.isArray(p.specs) || !p.specs.every(s => typeof s === 'string' && s.length <= 200) || typeof p.description !== 'string') return null;
   const name = p.name.trim();
+  // Rating, review count, colours and MRP are kept only when the research text actually shows them.
+  const evidenceText = market.evidence.toLowerCase();
+  const digitsIn = (value: number) => [String(value), value.toLocaleString('en-IN'), value.toLocaleString('en-US')].some(form => evidenceText.includes(form.toLowerCase()));
+  const rating = typeof p.rating === 'number' && p.rating >= 1 && p.rating <= 5 && evidenceText.includes(String(p.rating)) ? p.rating : null;
+  const reviewCount = rating !== null && typeof p.reviewCount === 'number' && Number.isInteger(p.reviewCount) && p.reviewCount > 0 && digitsIn(p.reviewCount) ? p.reviewCount : null;
+  const mrp = typeof p.mrpInr === 'number' && p.mrpInr > price && evidencePrices.includes(p.mrpInr) ? p.mrpInr : null;
+  const colours = Array.isArray(p.colours) ? p.colours.filter((c): c is string => typeof c === 'string' && c.length <= 40 && evidenceText.includes(c.toLowerCase())).slice(0, 6) : [];
   return {
+    enrichment: { rating, reviewCount, mrp, colours },
     id: 'market-' + createHash('sha256').update(source.url + '\n' + normalize(name)).digest('hex').slice(0,20),
     name, brand: p.brand.trim(), category: p.category as CatalogProduct['category'], price,
     description: p.description.slice(0,400), specs: p.specs.slice(0,4) as string[],
-    image: null, tags: [p.brand.toLowerCase(),p.category.toLowerCase(),'web listing'], badge: 'Web listing', origin: 'market',
+    image: null, tags: [p.brand.toLowerCase(),p.category.toLowerCase()], badge: null, origin: 'market',
     priceSource: { label: new URL(source.url).hostname.replace(/^www\./,''), url: source.url,
       asOf: new Intl.DateTimeFormat('en-IN',{ dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Kolkata' }).format(new Date(market.checkedAt)) },
   };
@@ -59,12 +68,18 @@ function publicImageUrl(value: string, page: string): string | null {
 
 /** Best-effort photo metadata. Blocked retailer pages keep the normal fallback tile. */
 export async function marketProductPhoto(page: string): Promise<string | null> {
-  if (!sourceUrl(page)) return null;
+  return (await marketProductPhotos(page))[0] ?? null;
+}
+
+/** Up to three distinct product photos named in the page metadata. */
+export async function marketProductPhotos(page: string): Promise<string[]> {
+  const found: string[] = [];
+  if (!sourceUrl(page)) return found;
   try {
     const response = await fetch(page, { redirect:'manual',signal:AbortSignal.timeout(5000),headers:{Accept:'text/html'} });
-    if (!response.ok) return null;
+    if (!response.ok) return found;
     const reader = response.body?.getReader();
-    if (!reader) return null;
+    if (!reader) return found;
     let html = '', bytes = 0;
     const decoder = new TextDecoder();
     try {
@@ -78,10 +93,11 @@ export async function marketProductPhoto(page: string): Promise<string | null> {
       }
     } finally { await reader.cancel(); }
     for (const tag of html.match(/<meta\b[^>]+>/gi) ?? []) {
-      if (!/(?:property|name)=["'](?:og:image|twitter:image)["']/i.test(tag)) continue;
+      if (!/(?:property|name)=["'](?:og:image|og:image:url|twitter:image)["']/i.test(tag)) continue;
       const value = tag.match(/content=["']([^"']+)["']/i)?.[1];
-      if (value) { const image = publicImageUrl(value,page); if (image) return image; }
+      if (value) { const image = publicImageUrl(value,page); if (image && !found.includes(image)) found.push(image); }
+      if (found.length >= 3) break;
     }
   } catch { /* Keep the normal category fallback. */ }
-  return null;
+  return found;
 }

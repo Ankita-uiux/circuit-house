@@ -129,12 +129,7 @@ export function AssistantPanel({ onAdd }: { onAdd: (product: Product) => void })
             <div key={`${index}-${message.role}`} data-index={index} className={`assistant-turn ${message.role}`}>
               {message.quote && <div className="assistant-quote-in-turn"><CornerUpLeft size={12} /> <span>{message.quote}</span></div>}
               <div className={`assistant-message ${message.role}`} data-testid={`message-${message.role}-${index}`}>
-                {message.role === 'assistant' ? <FormattedReply text={message.content} sources={message.market?.sources} /> : message.content}
-                {message.market?.status === 'used' && <div className="assistant-market-sources">
-                  <small>Market sources · {message.market.checkedAt ? new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' }).format(new Date(message.market.checkedAt)) : ''}</small>
-                  <ol>{message.market.sources.map((source, i) => <li key={source.url}><a href={source.url} target="_blank" rel="noopener noreferrer">[{i + 1}] {source.title}</a></li>)}</ol>
-                  <small>Prices and offer eligibility can change at retailer checkout.</small>
-                </div>}
+                {message.role === 'assistant' ? <FormattedReply text={message.content} /> : message.content}
               </div>
               {!!message.products?.length && (
                 <div className="assistant-picks">

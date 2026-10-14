@@ -7,7 +7,7 @@ const DEFAULT_GOAL =
 /**
  * Creates the app's tables if they don't exist and adds any newer columns.
  * Safe to run on every start: it never drops or rewrites data.
- * Mirrors lib/db/src/schema/assistant-behavior.ts and chat-log.ts — keep them in sync.
+ * Mirrors lib/db/src/schema/assistant-behavior.ts, chat-log.ts and store.ts — keep them in sync.
  */
 export async function ensureSchema() {
   await pool.query(`
@@ -47,6 +47,26 @@ export async function ensureSchema() {
     ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS name_prompt_enabled boolean NOT NULL DEFAULT false;
     ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS state jsonb;
     ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS meta jsonb;
+
+    CREATE TABLE IF NOT EXISTS demo_orders (
+      id text PRIMARY KEY,
+      session_id text,
+      status text NOT NULL,
+      items jsonb NOT NULL,
+      total integer NOT NULL,
+      pin text,
+      payment text NOT NULL,
+      delivery text,
+      address jsonb,
+      coupon text,
+      return_id text,
+      created_at timestamp with time zone NOT NULL DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS product_enrichment (
+      product_id text PRIMARY KEY,
+      data jsonb NOT NULL,
+      fetched_at timestamp with time zone NOT NULL DEFAULT now()
+    );
     CREATE INDEX IF NOT EXISTS chat_sessions_created_idx ON chat_sessions (created_at DESC, id DESC);
     CREATE INDEX IF NOT EXISTS chat_messages_session_idx ON chat_messages (session_id, id);
   `);

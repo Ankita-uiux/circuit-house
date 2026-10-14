@@ -425,7 +425,7 @@ function Home({
             <div>
               <h2 id="catalog-title">{heading}</h2>
               {productsQuery.isSuccess && <p>{visibleProducts.length} {visibleProducts.length === 1 ? 'product' : 'products'}</p>}
-              {search.trim() && <button type="button" className="cx-chip" onClick={askAboutSearch}>Check market prices with Circuit</button>}
+              {search.trim() && <button type="button" className="cx-chip" onClick={askAboutSearch}>Ask Circuit about this</button>}
             </div>
             <label className="cx-sort">
               <span>Sort by</span>
@@ -447,7 +447,7 @@ function Home({
           ) : products.length === 0 ? (
             <div className="cx-empty"><strong>No products yet.</strong><p>Please check back soon.</p></div>
           ) : visibleProducts.length === 0 ? (
-            <div className="cx-empty"><strong>No local matches for that search.</strong><p>Ask Circuit to look for a sourced web listing, or try a different model or budget.</p><button type="button" className="cx-chip active" onClick={askAboutSearch}>Ask Circuit to look it up</button><button type="button" className="cx-chip" onClick={() => { setSearch(''); setCategory('Everything'); }} data-testid="button-reset-filters">Clear filters</button></div>
+            <div className="cx-empty"><strong>Can’t see it here?</strong><p>Ask Circuit. It can find the exact model for you, or try a different model or budget.</p><button type="button" className="cx-chip active" onClick={askAboutSearch}>Ask Circuit to find it</button><button type="button" className="cx-chip" onClick={() => { setSearch(''); setCategory('Everything'); }} data-testid="button-reset-filters">Clear filters</button></div>
           ) : (
             <div className="cx-grid">
               {visibleProducts.map((product) => <ProductCard key={product.id} product={product} onAdd={() => add(product)} />)}
@@ -491,11 +491,6 @@ function ProductSkeleton() {
   return <div className="cx-grid" aria-label="Loading products">{[0, 1, 2, 3].map((item) => <div key={item} className="cx-card cx-card-skeleton"><div className="cx-card-media" /><div className="cx-card-body"><span /><span /><span /></div></div>)}</div>;
 }
 
-function MarketListingNote({ product }: { product: Product }) {
-  if (product.origin !== 'market') return null;
-  return <small className="market-listing-note">Web listing · <a href={product.priceSource.url} target="_blank" rel="noopener noreferrer">{product.priceSource.label}</a><br />Price checked {product.priceSource.asOf}. Demo cart only; retailer price may change.</small>;
-}
-
 function CartDrawer({ cart, changeQuantity, onClose }: { cart: CartLine[]; changeQuantity: (id: string, amount: number) => void; onClose: () => void }) {
   const subtotal = cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0);
   return (
@@ -505,7 +500,7 @@ function CartDrawer({ cart, changeQuantity, onClose }: { cart: CartLine[]; chang
         {cart.length ? <>
           <div className="drawer-items">{cart.map(({ product, quantity }) => <div className="cart-row" key={product.id}>
             <div className="cart-thumb"><ProductVisual product={product} size="thumb" /></div>
-            <div><h3>{product.name}</h3><small>{formatPrice(product.price)} each</small><MarketListingNote product={product} /><div className="qty-controls"><button onClick={() => changeQuantity(product.id, -1)} aria-label={`Remove one ${product.name}`} data-testid={`button-decrease-${product.id}`}><Minus size={12} /></button><span>{quantity}</span><button onClick={() => changeQuantity(product.id, 1)} aria-label={`Add one ${product.name}`} data-testid={`button-increase-${product.id}`}><Plus size={12} /></button></div></div>
+            <div><h3>{product.name}</h3><small>{formatPrice(product.price)} each</small><div className="qty-controls"><button onClick={() => changeQuantity(product.id, -1)} aria-label={`Remove one ${product.name}`} data-testid={`button-decrease-${product.id}`}><Minus size={12} /></button><span>{quantity}</span><button onClick={() => changeQuantity(product.id, 1)} aria-label={`Add one ${product.name}`} data-testid={`button-increase-${product.id}`}><Plus size={12} /></button></div></div>
             <div className="cart-row-price">{formatPrice(product.price * quantity)}</div>
           </div>)}</div>
           <div className="drawer-total"><div className="subtotal-line"><span>Subtotal</span><strong>{formatPrice(subtotal)}</strong></div><Link className="checkout-link" href="/checkout" onClick={onClose} data-testid="link-checkout">Continue to demo checkout <ArrowRight size={15} /></Link><div className="drawer-note">Taxes and delivery are not calculated in this demo.</div></div>
@@ -542,7 +537,7 @@ function Checkout({ cart, clearCart }: { cart: CartLine[]; clearCart: () => void
             </div> : <>
               <h2>Your order summary</h2>
               {!cart.length ? <div className="empty-state" style={{ padding: '28px 10px' }}><ShoppingBag size={22} /><strong>Your bag is empty.</strong><p>Explore the catalog and add something to see it here.</p><Link href="/" className="checkout-back" data-testid="link-empty-cart-store">Browse the store <ArrowRight size={13} /></Link></div> : <>
-                {cart.map(({ product, quantity }) => <div className="checkout-product" key={product.id}><div><div className="checkout-product-name">{product.name}</div><div className="checkout-product-meta">Qty {quantity} · {product.category}</div><MarketListingNote product={product} /></div><div className="checkout-product-price">{formatPrice(product.price * quantity)}</div></div>)}
+                {cart.map(({ product, quantity }) => <div className="checkout-product" key={product.id}><div><div className="checkout-product-name">{product.name}</div><div className="checkout-product-meta">Qty {quantity} · {product.category}</div></div><div className="checkout-product-price">{formatPrice(product.price * quantity)}</div></div>)}
                 <div className="checkout-totals"><div><span>Subtotal</span><span>{formatPrice(subtotal)}</span></div><div><span>Delivery</span><span>Not calculated</span></div><div className="grand"><span>Total in demo</span><span>{formatPrice(subtotal)}</span></div></div>
                 <button className="demo-confirm" onClick={finishDemo} data-testid="button-confirm-demo">Confirm demo checkout — no payment</button>
                 <div className="drawer-note">For demonstration only. This button does not process a payment.</div>

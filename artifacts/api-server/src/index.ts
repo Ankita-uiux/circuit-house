@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { ensureSchema } from "./lib/ensure-schema";
 import { startIcecatImageLookup } from "./lib/icecat";
+import { loadEnrichment } from "./lib/product-enrichment";
 import { catalog } from "./data/catalog";
 
 const rawPort = process.env["PORT"];
@@ -29,6 +30,7 @@ try {
 }
 
 startIcecatImageLookup(catalog);
+void loadEnrichment();
 
 app.listen(port, (err) => {
   if (err) {

@@ -49,3 +49,7 @@
 @media (prefers-reduced-motion: reduce) {
   .assistant-panel, .assistant-panel.is-open, .assistant-panel-scrim { transition: none; }
 }
+
+/* Admin help text (product data panel) */
+.admin-help { margin: 0 0 12px; font-size: 13.5px; line-height: 1.55; color: #4b5560; display: block; }
+.admin-help svg { vertical-align: -2px; color: #d99a00; }

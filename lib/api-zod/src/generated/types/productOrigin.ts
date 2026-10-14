@@ -7,7 +7,7 @@
  */
 
 /**
- * Market items are sourced external listings saved in the demo cart.
+ * Market items were found on the web; the store shows them like any other product.
  */
 export type ProductOrigin = typeof ProductOrigin[keyof typeof ProductOrigin];
 

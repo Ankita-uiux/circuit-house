@@ -5,8 +5,12 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PickupStatus } from './pickupStatus';
 import type { PriceSource } from './priceSource';
+import type { ProductColour } from './productColour';
+import type { ProductDelivery } from './productDelivery';
 import type { ProductOrigin } from './productOrigin';
+import type { StockStatus } from './stockStatus';
 
 export interface Product {
   id: string;
@@ -27,6 +31,32 @@ export interface Product {
   /** @nullable */
   badge: string | null;
   priceSource: PriceSource;
-  /** Market items are sourced external listings saved in the demo cart. */
+  /** Market items were found on the web; the store shows them like any other product. */
   origin?: ProductOrigin;
+  /** Model name without the brand. */
+  model?: string;
+  colours?: ProductColour[];
+  /**
+     * Average star rating out of 5 from a real web listing, or null when none was found.
+     * @nullable
+     */
+  rating?: number | null;
+  /** @nullable */
+  reviewCount?: number | null;
+  /**
+     * List price before discount (INR), shown struck through when higher than price.
+     * @nullable
+     */
+  mrp?: number | null;
+  stock?: StockStatus;
+  pickup?: PickupStatus;
+  delivery?: ProductDelivery;
+  offers?: string[];
+  /** At least two images when a photo exists (the second may repeat the first). */
+  images?: string[];
+  /**
+     * Amount above the shopper's budget, for "+₹X over budget" labels in chat.
+     * @nullable
+     */
+  overBudgetBy?: number | null;
 }

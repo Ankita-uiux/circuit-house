@@ -155,8 +155,72 @@ components:
         origin:
           type: string
           enum: [catalog, market]
-          description: Market items are sourced external listings saved in the demo cart.
+          description: Market items were found on the web; the store shows them like any other product.
+        model:
+          type: string
+          description: Model name without the brand.
+        colours:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductColour"
+        rating:
+          type: ["number", "null"]
+          description: Average star rating out of 5 from a real web listing, or null when none was found.
+        reviewCount:
+          type: ["integer", "null"]
+        mrp:
+          type: ["number", "null"]
+          description: List price before discount (INR), shown struck through when higher than price.
+        stock:
+          $ref: "#/components/schemas/StockStatus"
+        pickup:
+          $ref: "#/components/schemas/PickupStatus"
+        delivery:
+          type: object
+          properties:
+            label:
+              type: string
+          required: [label]
+        offers:
+          type: array
+          items:
+            type: string
+        images:
+          type: array
+          description: At least two images when a photo exists (the second may repeat the first).
+          items:
+            type: string
+        overBudgetBy:
+          type: ["number", "null"]
+          description: Amount above the shopper's budget, for "+₹X over budget" labels in chat.
       required: [id, name, brand, category, price, description, specs, image, tags, badge, priceSource]
+    ProductColour:
+      type: object
+      properties:
+        name:
+          type: string
+        hex:
+          type: string
+      required: [name, hex]
+    StockStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [in_stock, low_stock]
+        label:
+          type: string
+        count:
+          type: ["integer", "null"]
+      required: [status, label, count]
+    PickupStatus:
+      type: object
+      properties:
+        store:
+          type: string
+        label:
+          type: string
+      required: [store, label]
     PriceSource:
       type: object
       description: Where the listed price came from, so shoppers can check it.

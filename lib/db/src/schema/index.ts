@@ -19,3 +19,4 @@
 
 export * from "./assistant-behavior";
 export * from "./chat-log";
+export * from "./store";
