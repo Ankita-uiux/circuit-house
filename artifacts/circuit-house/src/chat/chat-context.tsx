@@ -27,11 +27,14 @@ export type ChatMessage = {
   feedback?: { rating: 'up' | 'down'; reasons?: string[]; details?: string } | null;
   /** A reply that just arrived: revealed word by word. */
   animate?: boolean;
+  comparison?: ShoppingAssistantReply['comparison'];
+  /** Product the assistant added to the cart in this reply. */
+  cartAdd?: { id: string; name: string } | null;
 };
 
 export type FeedbackInput = { rating: 'up' | 'down' | null; reasons?: string[]; details?: string };
 
-export const NAME_QUESTION = 'Hi! Before we get started, what should I call you? A first name or nickname is fine.';
+export const NAME_QUESTION = 'Hi! I’m your Circuit House shopping buddy 👋 Tell me what you need and your budget, and I’ll find the 3 best matches from our store. What should I call you?';
 const GREETING: ChatMessage = { role: 'assistant', content: NAME_QUESTION };
 const SESSION_KEY = 'circuit-house-chat-session';
 const NAME_KEY = 'circuit-house-participant-name';
@@ -55,6 +58,8 @@ type ChatContextValue = {
   setOpen: (open: boolean) => void;
   messages: ChatMessage[];
   participantName: string;
+  /** The name step is over: a name was given, or the first reply was a shopping request. */
+  nameStepDone: boolean;
   pending: 'name' | 'reply' | null;
   loading: boolean;
   error: string;
@@ -87,11 +92,15 @@ export function useChat() {
   return value;
 }
 
-export function ChatProvider({ cart, children }: { cart: CartLine[]; children: ReactNode }) {
+export function ChatProvider({ cart, onCartAdd, children }: { cart: CartLine[]; onCartAdd: (product: Product) => void; children: ReactNode }) {
   const [sessionId, setSessionId] = useState(() => storageGet(SESSION_KEY) ?? newSessionId());
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [participantName, setParticipantName] = useState('');
+  const [nameSkipped, setNameSkipped] = useState(false);
+  const nameStepDone = Boolean(participantName) || nameSkipped;
+  const onCartAddRef = useRef(onCartAdd);
+  onCartAddRef.current = onCartAdd;
   const [pending, setPending] = useState<'name' | 'reply' | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -112,7 +121,7 @@ export function ChatProvider({ cart, children }: { cart: CartLine[]; children: R
       .then(async (response) => {
         if (response.status === 404) return null;
         if (!response.ok) throw new Error(String(response.status));
-        return response.json() as Promise<{ participantName: string | null; preferences?: ChatPreferences; messages: Array<{ id: number; role: 'user' | 'assistant'; content: string; meta: Record<string, unknown>; createdAt: string }> }>;
+        return response.json() as Promise<{ participantName: string | null; nameStepDone?: boolean; preferences?: ChatPreferences; messages: Array<{ id: number; role: 'user' | 'assistant'; content: string; meta: Record<string, unknown>; createdAt: string }> }>;
       })
       .then((saved) => {
         if (cancelled) return;
@@ -123,6 +132,7 @@ export function ChatProvider({ cart, children }: { cart: CartLine[]; children: R
           return;
         }
         setParticipantName(saved.participantName ?? '');
+        setNameSkipped(Boolean(saved.nameStepDone && !saved.participantName));
         if (saved.preferences) setPreferences({ verbosity: saved.preferences.verbosity ?? 'normal', mode: saved.preferences.mode ?? null });
         setMessages(saved.messages.map((row) => ({
           id: row.role === 'assistant' ? row.id : undefined,
@@ -134,6 +144,8 @@ export function ChatProvider({ cart, children }: { cart: CartLine[]; children: R
           kind: row.meta?.kind === 'human' || row.meta?.kind === 'off-topic' ? row.meta.kind : undefined,
           suggestions: Array.isArray(row.meta?.suggestions) ? row.meta.suggestions as string[] : undefined,
           feedback: (row.meta?.feedback ?? null) as ChatMessage['feedback'],
+          comparison: (row.meta?.comparison ?? null) as ChatMessage['comparison'],
+          cartAdd: (row.meta?.cartAdd ?? null) as ChatMessage['cartAdd'],
           createdAt: row.createdAt,
         })));
       })
@@ -161,7 +173,9 @@ export function ChatProvider({ cart, children }: { cart: CartLine[]; children: R
       setMessages((current) => [...current, {
         id: reply.messageId ?? null, role: 'assistant', content: reply.reply, products: reply.products, market: reply.market, createdAt: new Date().toISOString(),
         kind: reply.kind, suggestions: reply.suggestions, animate: reply.kind !== 'human',
+        comparison: reply.comparison ?? null, cartAdd: reply.cartAdd ? { id: reply.cartAdd.id, name: reply.cartAdd.name } : null,
       }]);
+      if (reply.cartAdd) onCartAddRef.current(reply.cartAdd);
     } catch {
       setMessages((current) => [...current, { role: 'assistant', local: true, content: 'I couldn’t complete that request. Your message or reply may not have been saved. Please check your connection and try again.' }]);
     } finally {
@@ -177,11 +191,20 @@ export function ChatProvider({ cart, children }: { cart: CartLine[]; children: R
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text }),
       });
       if (!response.ok) throw new Error('Name was not saved');
-      const saved = await response.json() as { name: string | null; reply: string; pendingRequest: string | null };
+      const saved = await response.json() as { name: string | null; reply: string | null; pendingRequest: string | null; skipped?: boolean };
       const now = new Date().toISOString();
+      if (saved.skipped && saved.pendingRequest) {
+        // A shopping request instead of a name: carry on without a name and answer it.
+        setNameSkipped(true);
+        setMessages((current) => [...current, { role: 'user', content: text, createdAt: now }]);
+        setPending(null);
+        await requestReply(saved.pendingRequest, { deferred: true });
+        return;
+      }
       // A new chat for a known participant opens straight on the greeting.
-      if (silent) setMessages([{ role: 'assistant', content: saved.reply, createdAt: now }]);
-      else setMessages((current) => [...current, { role: 'user', content: text, createdAt: now }, { role: 'assistant', content: saved.reply, createdAt: now }]);
+      const greeting = saved.reply ?? '';
+      if (silent) setMessages([{ role: 'assistant', content: greeting, createdAt: now }]);
+      else setMessages((current) => [...current, { role: 'user', content: text, createdAt: now }, { role: 'assistant', content: greeting, createdAt: now }]);
       if (saved.name) {
         setParticipantName(saved.name);
         storageSet(NAME_KEY, saved.name);
@@ -201,7 +224,7 @@ export function ChatProvider({ cart, children }: { cart: CartLine[]; children: R
     const text = (value ?? prompt).trim();
     if (!text || pending) return;
     if (value === undefined) setPrompt('');
-    if (!participantName) {
+    if (!nameStepDone) {
       if (value === undefined) setPrompt('');
       await startWithName(text);
       return;
@@ -212,18 +235,19 @@ export function ChatProvider({ cart, children }: { cart: CartLine[]; children: R
       setMessages((current) => [...current, { role: 'user', content: text, quote: quoted ?? undefined, createdAt: new Date().toISOString() }]);
     }
     await requestReply(text, { ...options, quote: quoted });
-  }, [participantName, pending, prompt, quote, requestReply, startWithName]);
+  }, [nameStepDone, pending, prompt, quote, requestReply, startWithName]);
 
   const ask = useCallback((text: string) => {
     setOpen(true);
-    if (participantName) void send(text);
+    if (nameStepDone) void send(text);
     else { queued.current = text; setPrompt(''); }
-  }, [participantName, send]);
+  }, [nameStepDone, send]);
 
   const reset = useCallback((keepName: boolean) => {
     if (pending) return;
     if (!keepName) { storageSet(NAME_KEY, null); setParticipantName(''); }
     else setParticipantName('');
+    setNameSkipped(false);
     setMessages([GREETING]);
     setPrompt('');
     setQuote(null);
@@ -233,7 +257,7 @@ export function ChatProvider({ cart, children }: { cart: CartLine[]; children: R
   }, [pending]);
 
   const value = useMemo<ChatContextValue>(() => ({
-    sessionId, open, setOpen, messages, participantName, pending, loading, error, prompt, setPrompt, quote, setQuote,
+    sessionId, open, setOpen, messages, participantName, nameStepDone, pending, loading, error, prompt, setPrompt, quote, setQuote,
     preferences,
     setPreferences: (next) => {
       setPreferences(next);
@@ -257,9 +281,9 @@ export function ChatProvider({ cart, children }: { cart: CartLine[]; children: R
         throw new Error('Feedback not saved');
       }
     },
-    requestHuman: () => { if (participantName) void send('I’d like to talk to a store expert.', { requestHuman: true, quote: null }); },
+    requestHuman: () => { if (nameStepDone) void send('I’d like to talk to a store expert.', { requestHuman: true, quote: null }); },
     finishAnimation: (index) => setMessages((current) => current.map((message, i) => (i === index && message.animate ? { ...message, animate: false } : message))),
-  }), [sessionId, open, messages, participantName, pending, loading, error, prompt, quote, preferences, send, ask, reset]);
+  }), [sessionId, open, messages, participantName, nameStepDone, pending, loading, error, prompt, quote, preferences, send, ask, reset]);
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 }

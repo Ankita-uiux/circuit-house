@@ -139,3 +139,19 @@
   .ch-thinking-icon, .ch-thinking b, .ch-human-icon { animation: none; }
 }
 .test-turn-feedback .test-turn-body { background: #eef6ff; border-color: #c4dbf3; }
+
+/* Team flow: best fit, why / heads-up, category chips, comparison table */
+.ch-best-fit { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 7px; background: #fff6d6; color: #7a5600; font: 800 12px var(--cx-font); }
+.ch-why, .ch-heads-up { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--cx-text); }
+.ch-why b { color: var(--cx-accent-text); }
+.ch-heads-up { color: var(--cx-warn); }
+.ch-starter-chips { margin-bottom: 12px; }
+.ch-starters > p { margin: 0 0 8px; }
+.ch-compare { max-width: 100%; overflow-x: auto; border: 1px solid var(--cx-line); border-radius: 12px; background: #fff; }
+.ch-compare table { border-collapse: collapse; width: 100%; min-width: 360px; font-size: 12.5px; }
+.ch-compare th, .ch-compare td { padding: 8px 10px; border-bottom: 1px solid var(--cx-line); text-align: left; vertical-align: top; }
+.ch-compare thead th { font-weight: 800; color: var(--cx-heading); background: #f6f8f8; }
+.ch-compare tbody th { color: var(--cx-muted); font-weight: 600; white-space: nowrap; }
+.ch-compare tr:last-child th, .ch-compare tr:last-child td { border-bottom: 0; }
+.ch-compare td.is-good b { color: var(--cx-good); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }

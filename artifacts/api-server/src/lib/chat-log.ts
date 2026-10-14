@@ -20,12 +20,11 @@ export const TEST_CARDS = [
 ] as const;
 
 export const CHAT_SESSION_HEADER = "x-chat-session";
-export const NAME_GREETING = "Hi! Before we get started, what should I call you? A first name or nickname is fine.";
+export const NAME_GREETING = "Hi! I’m your Circuit House shopping buddy 👋 Tell me what you need and your budget, and I’ll find the 3 best matches from our store. What should I call you?";
 export function shoppingGreeting(name: string) {
-  return `Nice to meet you, ${name}! Tell me what you’ll use it for and your budget.\n\nI’ll suggest a few options from our catalog and explain the trade-offs in plain words.`;
+  return `Nice to meet you, ${name}! What are you shopping for today?`;
 }
 
-export const NAME_REASK = "Got it, I’ll come back to that in a moment. First, what should I call you? Just your first name is fine.";
 export const NAME_RETRY = "Sorry, I didn’t catch your name. What should I call you? Just your first name is fine.";
 
 /** The greeting is saved once per session, before the participant's first reply. */
@@ -70,7 +69,29 @@ export async function startNamedSession(id: string, name: string, rawReply: stri
   }
 }
 
-/** The reply to the name question had no name: save it, ask again, and keep any shopping request for later. */
+/** The first reply was a shopping request, not a name: go on without a name (the request is answered next). */
+export async function skipName(id: string, rawReply: string, state: unknown, userAgent: string | undefined, settings: unknown) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `INSERT INTO chat_sessions (id, title, settings, user_agent, name_prompt_enabled, state) VALUES ($1, $2, $3, $4, true, $5)
+       ON CONFLICT (id) DO UPDATE SET state = EXCLUDED.state, title = COALESCE(chat_sessions.title, EXCLUDED.title),
+         settings = COALESCE(chat_sessions.settings, EXCLUDED.settings)`,
+      [id, `(no name) ${rawReply.slice(0, 50)}`, JSON.stringify(settings), userAgent?.slice(0, 300) ?? null, JSON.stringify(state)],
+    );
+    await ensureGreeting(client, id);
+    await client.query(`INSERT INTO chat_messages (session_id, role, content) VALUES ($1, 'user', $2)`, [id, rawReply]);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/** The reply to the name question had no name and no request: save it and ask again. */
 export async function logNameRetry(id: string, rawReply: string, reply: string, state: unknown, userAgent: string | undefined, settings: unknown) {
   const client = await pool.connect();
   try {

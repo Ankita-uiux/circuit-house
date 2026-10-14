@@ -106,6 +106,18 @@ export interface Product {
      * @nullable
      */
   overBudgetBy?: number | null;
+  /**
+     * Chat cards only. One sentence linking the product to the shopper's use and budget.
+     * @nullable
+     */
+  why?: string | null;
+  /**
+     * Chat cards only. Which of the shopper's requirements this product misses.
+     * @nullable
+     */
+  headsUp?: string | null;
+  /** Chat cards only. The best fit of the picks (shown with a star). */
+  bestFit?: boolean;
 }
 
 export type ShoppingAssistantTurnRole = typeof ShoppingAssistantTurnRole[keyof typeof ShoppingAssistantTurnRole];
@@ -182,6 +194,27 @@ export interface ShoppingAssistantInput {
   requestHuman?: boolean;
 }
 
+export type ComparisonProductsItem = {
+  id: string;
+  name: string;
+  price: number;
+};
+
+export type ComparisonRowsItemValuesItem = {
+  text: string;
+  meetsRequirement: boolean;
+};
+
+export type ComparisonRowsItem = {
+  label: string;
+  values: ComparisonRowsItemValuesItem[];
+};
+
+export interface Comparison {
+  products: ComparisonProductsItem[];
+  rows: ComparisonRowsItem[];
+}
+
 export type ShoppingAssistantReplyMarketStatus = typeof ShoppingAssistantReplyMarketStatus[keyof typeof ShoppingAssistantReplyMarketStatus];
 
 
@@ -228,10 +261,13 @@ export interface ShoppingAssistantReply {
   /** human = the shopper asked for a person; shown as a call-back card. */
   kind?: ShoppingAssistantReplyKind;
   /**
-     * Follow-up questions for the "Try asking" chips.
-     * @maxItems 3
+     * Tappable options shown under the reply (answers to its question, action buttons or follow-ups).
+     * @maxItems 6
      */
   suggestions?: string[];
+  comparison?: Comparison | null;
+  /** A product the assistant added to the cart after the shopper asked. */
+  cartAdd?: Product | null;
 }
 
 export interface AssistantBehaviorSettings {

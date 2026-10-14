@@ -11,7 +11,7 @@ A demo Indian electronics store (class project) with **Ask Circuit**, an AI shop
 - Prices are in **Indian rupees**, formatted `₹1,19,900` (en-IN). Never use dollars.
 - **No invented ratings or reviews:** star ratings, review counts, colours and MRP come only from the admin-triggered web lookup (`/admin` → Ratings, reviews and colours) and stay empty otherwise. Stock, pickup, delivery, store offers (EMI, CAMPUS5) and orders are clearly demo data for user testing.
 - **Never show other stores to shoppers:** web search is a data source only; replies are sanitised of Amazon/Flipkart/Croma names, links and citations, and web-found products are shown as normal Circuit House products.
-- **Do not change the assistant's persona, tone or wording rules** (another team owns them). Functional rules live in `routes/shop.ts` (`CONVERSATION_STATE_RULES`).
+- **The assistant prompt is the team prompt** (`TEAM_PROMPT` in `api-server/src/lib/assistant-behavior.ts`: role, scope, autonomy, accuracy, honesty, privacy, style, 4-stage flow). Change it only with the dialogue team. `/admin` only tunes empathy (+ examples) and initiative; the old persona/tone/goal boxes are hidden. Decisions (15 Oct): web-found products stay in (sold as ours); a shopping request instead of a name skips the name; demo low-stock labels stay.
 - The UI may follow **Croma's layout and shopping flow**, but must **not** copy Croma's logo, name or branding. Circuit House has its own logo (teal rounded square with a "C" mark, wordmark "circuit**house**").
 - The owner approved real product photos for the catalog (13 Oct 2026), with a consistent square white background and centered framing. Source references are recorded in `scripts/catalog-image-sources.json`. Keep the existing Unsplash credits for banner photos.
 - Keep explanations simple; the owner is a design student, not a developer.
@@ -114,6 +114,13 @@ From 5 student interviews + a JTBD list (in the owner's files): students set a f
 - Intents: off-topic → one-line guardrail; human → "Our store expert will call you in 10 seconds 📞" card; store-service → demo order/return/exchange/delivery data.
 - Chat UI: docked beside the page on wide screens, survives close/refresh, New chat, Reply/quote, smart scrolling, thinking indicator, word-by-word reveal (client side), thumbs up/down + feedback modal (saved as `feedback` rows), starter prompts, Try asking chips, Short/Normal/Detailed switch, Help me choose / I know what I want.
 - Sample order IDs for testing: CH-240117, CH-240118, CH-240119. Coupon: CAMPUS5.
+
+## Team flow (15 Oct 2026)
+
+- Greeting asks for the name; then "What are you shopping for today?" with [Laptop] [Phone] [Headphones] [Something else] chips.
+- The server computes the stage (1 greeting, 2 slots, 3 search, 4 actions) and missing slots (use → budget → brand) and sends them to the model.
+- The model returns options (tappable chips), productNotes (Why / Heads-up per card, first = ⭐ Best fit), comparison (table for "Compare all 3") and cartAddId (adds to the cart when the shopper asks). Chips "Go to cart" and "Talk to store expert" are app actions.
+- Fewer than 3 products in budget: the nearest over-budget options are offered with "+₹X over budget".
 
 ## Open items / next steps
 

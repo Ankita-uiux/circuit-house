@@ -75,7 +75,7 @@ export default function ProductPage() {
   const productLabel = `${product.name} · ${formatPrice(product.price)}`;
   const askQuestion = (question: string) => {
     chat.setOpen(true);
-    if (chat.participantName) void chat.send(question, { quote: productLabel });
+    if (chat.nameStepDone) void chat.send(question, { quote: productLabel });
     else chat.ask(`${question} (about the ${product.name})`);
   };
   const askSomethingElse = () => { chat.setQuote(productLabel); chat.setOpen(true); };

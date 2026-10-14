@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { Comparison } from './comparison';
 import type { Product } from './product';
 import type { ShoppingAssistantReplyKind } from './shoppingAssistantReplyKind';
 import type { ShoppingAssistantReplyMarket } from './shoppingAssistantReplyMarket';
@@ -21,8 +22,11 @@ export interface ShoppingAssistantReply {
   /** human = the shopper asked for a person; shown as a call-back card. */
   kind?: ShoppingAssistantReplyKind;
   /**
-     * Follow-up questions for the "Try asking" chips.
-     * @maxItems 3
+     * Tappable options shown under the reply (answers to its question, action buttons or follow-ups).
+     * @maxItems 6
      */
   suggestions?: string[];
+  comparison?: Comparison | null;
+  /** A product the assistant added to the cart after the shopper asked. */
+  cartAdd?: Product | null;
 }

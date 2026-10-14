@@ -59,7 +59,10 @@ export const ListProductsResponseItem = zod.object({
 }).optional(),
   "offers": zod.array(zod.string()).optional(),
   "images": zod.array(zod.string()).optional().describe('At least two images when a photo exists (the second may repeat the first).'),
-  "overBudgetBy": zod.number().nullish().describe('Amount above the shopper\'s budget, for "+₹X over budget" labels in chat.')
+  "overBudgetBy": zod.number().nullish().describe('Amount above the shopper\'s budget, for "+₹X over budget" labels in chat.'),
+  "why": zod.string().nullish().describe('Chat cards only. One sentence linking the product to the shopper\'s use and budget.'),
+  "headsUp": zod.string().nullish().describe('Chat cards only. Which of the shopper\'s requirements this product misses.'),
+  "bestFit": zod.boolean().optional().describe('Chat cards only. The best fit of the picks (shown with a star).')
 })
 export const ListProductsResponse = zod.array(ListProductsResponseItem)
 
@@ -98,7 +101,7 @@ export const GetShoppingAssistantReplyBody = zod.object({
   "requestHuman": zod.boolean().optional().describe('The shopper tapped "Talk to store expert".')
 })
 
-export const getShoppingAssistantReplyResponseSuggestionsMax = 3;
+export const getShoppingAssistantReplyResponseSuggestionsMax = 6;
 
 
 
@@ -143,7 +146,10 @@ export const GetShoppingAssistantReplyResponse = zod.object({
 }).optional(),
   "offers": zod.array(zod.string()).optional(),
   "images": zod.array(zod.string()).optional().describe('At least two images when a photo exists (the second may repeat the first).'),
-  "overBudgetBy": zod.number().nullish().describe('Amount above the shopper\'s budget, for "+₹X over budget" labels in chat.')
+  "overBudgetBy": zod.number().nullish().describe('Amount above the shopper\'s budget, for "+₹X over budget" labels in chat.'),
+  "why": zod.string().nullish().describe('Chat cards only. One sentence linking the product to the shopper\'s use and budget.'),
+  "headsUp": zod.string().nullish().describe('Chat cards only. Which of the shopper\'s requirements this product misses.'),
+  "bestFit": zod.boolean().optional().describe('Chat cards only. The best fit of the picks (shown with a star).')
 })),
   "market": zod.object({
   "status": zod.enum(['used', 'not-needed', 'unavailable', 'disabled']),
@@ -155,7 +161,65 @@ export const GetShoppingAssistantReplyResponse = zod.object({
 }).optional(),
   "messageId": zod.number().int().nullish().describe('Saved message ID, used for feedback on this reply.'),
   "kind": zod.enum(['reply', 'human', 'off-topic']).optional().describe('human = the shopper asked for a person; shown as a call-back card.'),
-  "suggestions": zod.array(zod.string()).max(getShoppingAssistantReplyResponseSuggestionsMax).optional().describe('Follow-up questions for the "Try asking" chips.')
+  "suggestions": zod.array(zod.string()).max(getShoppingAssistantReplyResponseSuggestionsMax).optional().describe('Tappable options shown under the reply (answers to its question, action buttons or follow-ups).'),
+  "comparison": zod.union([zod.object({
+  "products": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "price": zod.number()
+})),
+  "rows": zod.array(zod.object({
+  "label": zod.string(),
+  "values": zod.array(zod.object({
+  "text": zod.string(),
+  "meetsRequirement": zod.boolean()
+}))
+}))
+}),zod.null()]).optional(),
+  "cartAdd": zod.union([zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "brand": zod.string(),
+  "category": zod.string(),
+  "price": zod.number().describe('Price in Indian rupees (INR).'),
+  "description": zod.string(),
+  "specs": zod.array(zod.string()).describe('Key specifications in plain words, most important first.'),
+  "image": zod.string().nullable().describe('Optional photo URL. When null, the storefront shows a brand tile.'),
+  "tags": zod.array(zod.string()),
+  "badge": zod.string().nullable(),
+  "priceSource": zod.object({
+  "label": zod.string(),
+  "url": zod.string(),
+  "asOf": zod.string().describe('Date the price was checked, e.g. "12 Oct 2026".')
+}).describe('Where the listed price came from, so shoppers can check it.'),
+  "origin": zod.enum(['catalog', 'market']).optional().describe('Market items were found on the web; the store shows them like any other product.'),
+  "model": zod.string().optional().describe('Model name without the brand.'),
+  "colours": zod.array(zod.object({
+  "name": zod.string(),
+  "hex": zod.string()
+})).optional(),
+  "rating": zod.number().nullish().describe('Average star rating out of 5 from a real web listing, or null when none was found.'),
+  "reviewCount": zod.number().int().nullish(),
+  "mrp": zod.number().nullish().describe('List price before discount (INR), shown struck through when higher than price.'),
+  "stock": zod.object({
+  "status": zod.enum(['in_stock', 'low_stock']),
+  "label": zod.string(),
+  "count": zod.number().int().nullable()
+}).optional(),
+  "pickup": zod.object({
+  "store": zod.string(),
+  "label": zod.string()
+}).optional(),
+  "delivery": zod.object({
+  "label": zod.string()
+}).optional(),
+  "offers": zod.array(zod.string()).optional(),
+  "images": zod.array(zod.string()).optional().describe('At least two images when a photo exists (the second may repeat the first).'),
+  "overBudgetBy": zod.number().nullish().describe('Amount above the shopper\'s budget, for "+₹X over budget" labels in chat.'),
+  "why": zod.string().nullish().describe('Chat cards only. One sentence linking the product to the shopper\'s use and budget.'),
+  "headsUp": zod.string().nullish().describe('Chat cards only. Which of the shopper\'s requirements this product misses.'),
+  "bestFit": zod.boolean().optional().describe('Chat cards only. The best fit of the picks (shown with a star).')
+}),zod.null()]).optional().describe('A product the assistant added to the cart after the shopper asked.')
 })
 
 

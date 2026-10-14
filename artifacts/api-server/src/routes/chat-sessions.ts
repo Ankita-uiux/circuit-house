@@ -18,7 +18,7 @@ import {
   getSessionState,
   saveSessionState,
   logNameRetry,
-  NAME_REASK,
+  skipName,
   NAME_RETRY,
   FEEDBACK_REASONS,
   saveFeedback,
@@ -51,11 +51,15 @@ router.post("/shop/chat-sessions/:id/start", async (req, res): Promise<void> => 
       return;
     }
     const parsed = parseNameReply(message);
+    if (!parsed.name && parsed.request) {
+      // A shopping request instead of a name: skip the name and answer it straight away.
+      await skipName(id, message, { ...state, name_skipped: true }, req.get("user-agent"), settings);
+      res.json({ name: null, skipped: true, reply: null, pendingRequest: parsed.request });
+      return;
+    }
     if (!parsed.name) {
-      const pending = parsed.request ?? state.pending_request;
-      const reply = parsed.request ? NAME_REASK : NAME_RETRY;
-      await logNameRetry(id, message, reply, { ...state, pending_request: pending }, req.get("user-agent"), settings);
-      res.json({ name: null, reply, pendingRequest: null });
+      await logNameRetry(id, message, NAME_RETRY, state, req.get("user-agent"), settings);
+      res.json({ name: null, reply: NAME_RETRY, pendingRequest: null });
       return;
     }
     const session = await startNamedSession(id, parsed.name, message, req.get("user-agent"), settings);
@@ -87,7 +91,12 @@ router.get("/shop/chat-sessions/:id/conversation", async (req, res): Promise<voi
       return;
     }
     const state = normalizeState(conversation.state);
-    res.json({ participantName: conversation.participantName, preferences: { verbosity: state.verbosity, mode: state.mode }, messages: conversation.messages });
+    res.json({
+      participantName: conversation.participantName,
+      nameStepDone: Boolean(conversation.participantName) || state.name_skipped,
+      preferences: { verbosity: state.verbosity, mode: state.mode },
+      messages: conversation.messages,
+    });
   } catch (error) {
     req.log.error({ error }, "Could not load conversation");
     res.status(500).json({ error: "The conversation could not be loaded." });

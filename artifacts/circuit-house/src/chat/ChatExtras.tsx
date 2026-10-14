@@ -129,35 +129,55 @@ function FeedbackIllustration() {
 }
 
 /* ---------- Starter prompts after the name step ---------- */
-export const STARTERS = ['Laptop for my course', 'Phone under ₹30k', 'Compare two products'];
+export const STARTERS = ['Laptop', 'Phone', 'Headphones', 'Something else'];
 
+/** Category options after the greeting (Stage 1), plus how the shopper likes to shop. */
 export function StarterPrompts({ preferences, onMode, onPick }: { preferences: ChatPreferences; onMode: (mode: 'help-me-choose' | 'know-what-i-want') => void; onPick: (text: string) => void }) {
   return (
-    <section className="ch-starters" aria-labelledby="starters-title" data-testid="starter-prompts">
-      <h3 id="starters-title">How can we help?</h3>
-      <p className="ch-muted">Tell us how you like to shop:</p>
+    <section className="ch-starters" aria-label="What are you shopping for?" data-testid="starter-prompts">
+      <div className="ch-try-chips ch-starter-chips">
+        {STARTERS.map((text) => (
+          <button type="button" key={text} className="ch-try-chip" onClick={() => onPick(text)} data-testid={`button-starter-${text.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>{text}</button>
+        ))}
+      </div>
+      <p className="ch-muted">How do you like to shop?</p>
       <div className="ch-mode" role="radiogroup" aria-label="How do you like to shop?">
         <button type="button" role="radio" aria-checked={preferences.mode === 'help-me-choose'} className={preferences.mode === 'help-me-choose' ? 'is-selected' : ''} onClick={() => onMode('help-me-choose')} data-testid="button-mode-help">Help me choose</button>
         <button type="button" role="radio" aria-checked={preferences.mode === 'know-what-i-want'} className={preferences.mode === 'know-what-i-want' ? 'is-selected' : ''} onClick={() => onMode('know-what-i-want')} data-testid="button-mode-know">I know what I want</button>
       </div>
-      <ul>
-        {STARTERS.map((text) => (
-          <li key={text}><button type="button" onClick={() => onPick(text)} data-testid={`button-starter-${text.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}><span className="ch-starter-icon"><ArrowUp size={13} /></span>{text}</button></li>
-        ))}
-      </ul>
     </section>
   );
 }
 
 /* ---------- "Try asking" chips after a reply ---------- */
-export function TryAsking({ suggestions, onPick }: { suggestions: string[]; onPick: (text: string) => void }) {
+/** Tappable options under a reply: answers to its question, action buttons, or "Try asking" follow-ups. */
+export function TryAsking({ suggestions, asQuestion, onPick }: { suggestions: string[]; asQuestion: boolean; onPick: (text: string) => void }) {
   if (!suggestions.length) return null;
   return (
     <div className="ch-try" data-testid="try-asking">
-      <span className="ch-try-label"><Sparkles size={14} /> Try asking</span>
+      {!asQuestion && <span className="ch-try-label"><Sparkles size={14} /> Try asking</span>}
       <div className="ch-try-chips">
-        {suggestions.map((text) => <button type="button" key={text} className="ch-try-chip" onClick={() => onPick(text)}><ArrowUp size={12} /> {text}</button>)}
+        {suggestions.map((text) => <button type="button" key={text} className="ch-try-chip" onClick={() => onPick(text)} data-testid="chip-option">{!asQuestion && <ArrowUp size={12} />} {text}</button>)}
       </div>
+    </div>
+  );
+}
+
+/** "Compare all 3": side-by-side table, values that meet the shopper's needs in bold. */
+export function ComparisonTable({ comparison }: { comparison: NonNullable<ChatMessage['comparison']> }) {
+  return (
+    <div className="ch-compare" data-testid="comparison-table">
+      <table>
+        <thead><tr><th scope="col"><span className="sr-only">Spec</span></th>{comparison.products.map((product) => <th scope="col" key={product.id}>{product.name}</th>)}</tr></thead>
+        <tbody>
+          {comparison.rows.map((row) => (
+            <tr key={row.label}>
+              <th scope="row">{row.label}</th>
+              {row.values.map((value, index) => <td key={index} className={value.meetsRequirement ? 'is-good' : ''}>{value.meetsRequirement ? <b>{value.text}</b> : value.text}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

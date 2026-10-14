@@ -28,6 +28,8 @@ function cleanName(raw: string | undefined): string | null {
   if (!raw) return null;
   const word = raw.replace(/[^A-Za-z'-]/g, '').replace(/^['-]+|['-]+$/g, '');
   if (word.length < 2 || word.length > 30 || NOT_A_NAME.has(word.toLowerCase())) return null;
+  // Short all-capital names (initials like "NB") stay as typed.
+  if (word.length <= 4 && word === word.toUpperCase()) return word;
   return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
 }
 

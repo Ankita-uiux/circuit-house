@@ -193,6 +193,15 @@ components:
         overBudgetBy:
           type: ["number", "null"]
           description: Amount above the shopper's budget, for "+₹X over budget" labels in chat.
+        why:
+          type: ["string", "null"]
+          description: Chat cards only. One sentence linking the product to the shopper's use and budget.
+        headsUp:
+          type: ["string", "null"]
+          description: Chat cards only. Which of the shopper's requirements this product misses.
+        bestFit:
+          type: boolean
+          description: Chat cards only. The best fit of the picks (shown with a star).
       required: [id, name, brand, category, price, description, specs, image, tags, badge, priceSource]
     ProductColour:
       type: object
@@ -273,6 +282,40 @@ components:
           type: boolean
           description: The shopper tapped "Talk to store expert".
       required: [message, history]
+    Comparison:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              price:
+                type: number
+            required: [id, name, price]
+        rows:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              values:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    text:
+                      type: string
+                    meetsRequirement:
+                      type: boolean
+                  required: [text, meetsRequirement]
+            required: [label, values]
+      required: [products, rows]
     BagLine:
       type: object
       properties:
@@ -332,10 +375,19 @@ components:
           description: human = the shopper asked for a person; shown as a call-back card.
         suggestions:
           type: array
-          maxItems: 3
-          description: Follow-up questions for the "Try asking" chips.
+          maxItems: 6
+          description: Tappable options shown under the reply (answers to its question, action buttons or follow-ups).
           items:
             type: string
+        comparison:
+          oneOf:
+            - $ref: "#/components/schemas/Comparison"
+            - type: "null"
+        cartAdd:
+          description: A product the assistant added to the cart after the shopper asked.
+          oneOf:
+            - $ref: "#/components/schemas/Product"
+            - type: "null"
       required: [reply, products]
     AssistantBehaviorSettings:
       type: object

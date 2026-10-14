@@ -59,4 +59,16 @@ export interface Product {
      * @nullable
      */
   overBudgetBy?: number | null;
+  /**
+     * Chat cards only. One sentence linking the product to the shopper's use and budget.
+     * @nullable
+     */
+  why?: string | null;
+  /**
+     * Chat cards only. Which of the shopper's requirements this product misses.
+     * @nullable
+     */
+  headsUp?: string | null;
+  /** Chat cards only. The best fit of the picks (shown with a star). */
+  bestFit?: boolean;
 }

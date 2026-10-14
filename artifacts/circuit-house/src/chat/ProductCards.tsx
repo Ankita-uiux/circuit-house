@@ -16,7 +16,7 @@ export function ProductCarousel({ products, onChoose, onAsk }: { products: Produ
   };
   useEffect(() => { rememberProducts(products); update(); }, [products]);
   const scroll = (direction: number) => track.current?.scrollBy({ left: direction * 220, behavior: 'smooth' });
-  const list = products.slice(0, 4);
+  const list = products.slice(0, 3);
   return (
     <div className="ch-carousel">
       <div className="ch-carousel-track" ref={track} onScroll={update} data-testid="chat-carousel">
@@ -38,11 +38,13 @@ function ChatProductCard({ product, onChoose, onAsk }: { product: Product; onCho
         <ProductImage product={product} />
       </button>
       <div className="ch-chat-card-body">
-        <BadgePill badge={product.badge} />
+        {product.bestFit ? <span className="ch-best-fit">⭐ Best fit</span> : <BadgePill badge={product.badge} />}
         <PriceBlock product={product} />
         <span className="ch-desc">{product.specs.slice(0, 2).join(' · ') || product.description}</span>
         <button type="button" className="ch-name" onClick={() => openProduct(product)} title={product.name}>{product.name}</button>
         <StarRating rating={product.rating} reviewCount={product.reviewCount} />
+        {product.why && <p className="ch-why"><b>Why:</b> {product.why}</p>}
+        {product.headsUp && <p className="ch-heads-up"><b>Heads-up:</b> {product.headsUp}</p>}
         <StockBox product={product} />
         {quantity > 0
           ? <QuantityStepper quantity={quantity} label={product.name} onMinus={() => cart.change(product.id, -1)} onPlus={() => cart.change(product.id, 1)} onOpenBag={() => cart.setOpen(true)} />

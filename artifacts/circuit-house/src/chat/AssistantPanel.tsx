@@ -7,7 +7,7 @@ import { formatPrice } from '@/shared';
 import { useCart } from '@/cart';
 import { ChooseOptionsSheet, ProductCarousel } from './ProductCards';
 import { useChat, type ChatMessage } from './chat-context';
-import { FeedbackBar, FeedbackModal, HumanCard, StarterPrompts, ThinkingIndicator, TryAsking, TypedReply, VerbositySwitch } from './ChatExtras';
+import { ComparisonTable, FeedbackBar, FeedbackModal, HumanCard, StarterPrompts, ThinkingIndicator, TryAsking, TypedReply, VerbositySwitch } from './ChatExtras';
 import { FormattedReply } from './FormattedReply';
 import { TEST_CARDS, postSessionEvent, readFacilitatorMode } from './session-events';
 
@@ -32,7 +32,7 @@ export function AssistantLauncher() {
  */
 export function AssistantPanel() {
   const chat = useChat();
-  const { open, setOpen, messages, pending, participantName, prompt, setPrompt, quote, setQuote, send, error, loading } = chat;
+  const { open, setOpen, messages, pending, prompt, setPrompt, quote, setQuote, send, error, loading } = chat;
   const { toast } = useToast();
   const [facilitator] = useState(readFacilitatorMode);
   const listRef = useRef<HTMLDivElement>(null);
@@ -42,7 +42,7 @@ export function AssistantPanel() {
   const [spacer, setSpacer] = useState<{ index: number; height: number } | null>(null);
   const userScrolled = useRef(false);
   const [unread, setUnread] = useState<number | null>(null);
-  const collectingName = !participantName;
+  const collectingName = !chat.nameStepDone;
   const cart = useCart();
   const [sheet, setSheet] = useState<Product | null>(null);
   const [feedbackFor, setFeedbackFor] = useState<number | null>(null);
@@ -70,7 +70,7 @@ export function AssistantPanel() {
     return () => document.documentElement.classList.remove('chat-open');
   }, [open]);
 
-  useChatInactivity(open && !!participantName, !!pending, chat.sessionId, messages.length, () => {
+  useChatInactivity(open && chat.nameStepDone, !!pending, chat.sessionId, messages.length, () => {
     chat.pushLocal({ role: 'assistant', content: 'Are you still there?' });
     void postSessionEvent(chat.sessionId, { type: 'inactivity' }).catch(() => {
       toast({ title: 'Reminder could not be saved', description: 'The inactivity reminder appeared here, but could not be saved to the chat log.' });
@@ -151,6 +151,13 @@ export function AssistantPanel() {
     event?.preventDefault();
     void send();
   };
+  // Option chips: a few are app actions; the rest are sent as the shopper's reply.
+  const pickOption = (text: string) => {
+    const key = text.trim().toLowerCase();
+    if (key === 'go to cart' || key === 'view cart') { cart.setOpen(true); return; }
+    if (key === 'talk to store expert' || key === 'talk to a store expert') { chat.requestHuman(); return; }
+    void send(text);
+  };
   const replyTo = (message: ChatMessage) => {
     setQuote(message.content);
     inputRef.current?.focus();
@@ -196,6 +203,7 @@ export function AssistantPanel() {
                   </div>
                 )}
                 {ready && !!message.products?.length && <ProductCarousel products={message.products} onChoose={setSheet} onAsk={askAbout} />}
+                {ready && message.comparison && <ComparisonTable comparison={message.comparison} />}
                 <div className="assistant-turn-meta">
                   {message.createdAt && <time dateTime={message.createdAt}>{timeFormat.format(new Date(message.createdAt))}</time>}
                   {message.role === 'assistant' && message.id && ready && <FeedbackBar message={message} onFeedback={(input) => void feedback(message.id!, input)} onOpenModal={() => setFeedbackFor(message.id!)} />}
@@ -203,12 +211,12 @@ export function AssistantPanel() {
                     <button type="button" className="assistant-reply-btn" onClick={() => replyTo(message)} aria-label="Reply to this message" data-testid={`button-reply-${index}`}><CornerUpLeft size={12} /> Reply</button>
                   )}
                 </div>
-                {isLatest && ready && !pending && message.suggestions && <TryAsking suggestions={message.suggestions} onPick={(text) => void send(text)} />}
+                {isLatest && ready && !pending && message.suggestions && <TryAsking suggestions={message.suggestions} asQuestion={/\?\s*$/.test(message.content.trim())} onPick={pickOption} />}
               </div>
             );
           })}
           {showStarters && (
-            <StarterPrompts preferences={chat.preferences} onMode={(mode) => chat.setPreferences({ ...chat.preferences, mode })} onPick={(text) => void send(text)} />
+            <StarterPrompts preferences={chat.preferences} onMode={(mode) => chat.setPreferences({ ...chat.preferences, mode })} onPick={pickOption} />
           )}
           {pending && (
             <div className="assistant-turn assistant">

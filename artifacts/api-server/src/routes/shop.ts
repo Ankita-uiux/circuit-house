@@ -22,6 +22,8 @@ import { isPin, storeServiceContext } from "../lib/store-services";
 
 const router: IRouter = Router();
 
+type Comparison = { products: Array<{ id: string; name: string; price: number }>; rows: Array<{ label: string; values: Array<{ text: string; meetsRequirement: boolean }> }> };
+
 /** Functional context for every turn. Persona, tone and wording rules live in the owner's settings prompt. */
 const CONVERSATION_STATE_RULES = `Conversation state:
 - conversationState is what is known so far in this conversation (category, budget_max, budget_stretch, use_case, brands_include, brands_exclude, must_haves, items_in_bag, last_discussed). It is already updated for the latest message; the newest value always wins over anything earlier in the chat.
@@ -36,7 +38,9 @@ Products for this turn:
 - localCatalog has already been filtered to the shopper's category, budget (up to budget_stretch) and brand exclusions. Only recommend from it, from sessionProducts, or from externalProducts backed by marketResearch. If localCatalog and sessionProducts are empty because the category is not known yet, recommend nothing and find out what they are shopping for.
 - A product priced above budget_max (but within budget_stretch) is shown with a "+₹X over budget" label; say so honestly when you suggest it.
 - sessionProducts are products already found on the web earlier in this conversation; reuse their exact IDs and prices.
-- suggestions: 2 or 3 short follow-up questions the shopper might tap next, written in the shopper's voice (for example "Compare these two", "Show cheaper options", "Which has better battery?"), each under 40 characters, specific to this conversation.
+- options: the tappable choices shown under your reply (3–6 when you ask a question, the action buttons in stages 3 and 4, otherwise 2–3 short follow-ups the shopper might tap, in their voice). Each under 30 characters. Use "Talk to store expert" when a human is the right next step.
+- productNotes: one entry per productId you return (why, headsUp). comparison: only for "Compare all 3", otherwise null. cartAddId: only when the shopper clearly asked to add that product to the cart; otherwise null.
+- conversationStage and missingSlots are computed from conversationState: follow the stage rules for that stage.
 - storeServices, when present, holds demo results for order lookup, returns, exchange estimates and delivery by PIN code, plus store policies. Answer service questions only from it, and ask for the order ID, PIN code or old model when needed.`;
 
 function storeProduct(product: CatalogProduct, pin: string | null = null): StoreProduct {
@@ -69,23 +73,34 @@ router.get("/shop/products/:id", async (req, res): Promise<void> => {
 });
 
 const OFF_TOPIC_STEER: Record<string, string> = {
-  Phones: "Shall we get back to finding your phone?",
-  Laptops: "Shall we get back to finding your laptop?",
-  Tablets: "Shall we get back to finding your tablet?",
-  Audio: "Shall we get back to your audio pick?",
-  Wearables: "Shall we get back to finding your smartwatch?",
-  Accessories: "Shall we get back to your accessories?",
-  Cameras: "Shall we get back to finding your camera?",
-  Gaming: "Shall we get back to your gaming pick?",
-  TVs: "Shall we get back to finding your TV?",
+  Phones: "a phone that fits your budget",
+  Laptops: "a laptop that fits your course",
+  Tablets: "a tablet for your classes",
+  Audio: "the right earbuds or headphones",
+  Wearables: "the right smartwatch",
+  Accessories: "the right accessories",
+  Cameras: "the right camera",
+  Gaming: "the right gaming gear",
+  TVs: "the right TV",
 };
 
 const HUMAN_REPLY = "Our store expert will call you in 10 seconds 📞";
 const HUMAN_REQUEST = /\b(talk|speak|connect|chat)\s+(to|with)\s+(a\s+|an\s+|some\s*one|the\s+)?(human|person|real person|agent|executive|store (staff|expert)|staff|expert|someone)\b|\b(customer care|call me back|human agent|real human)\b/i;
 
 function offTopicReply(state: ConversationState) {
-  const steer = state.category ? OFF_TOPIC_STEER[state.category] : "What are you shopping for today?";
-  return `I can only help with shopping at Circuit House. ${steer}`;
+  return `I can't help with that, but I can help you find ${state.category ? OFF_TOPIC_STEER[state.category] : "the right gadget for college"}.`;
+}
+
+/** Which stage of the team's conversation flow we are in, and which slots are still missing. */
+function conversationStage(state: ConversationState) {
+  const missing: string[] = [];
+  if (!state.category) missing.push("category");
+  if (!state.use_case) missing.push("use");
+  if (state.budget_max === null) missing.push("budget");
+  if (!state.brand_no_preference && !state.brands_include.length && !state.brands_exclude.length) missing.push("brand");
+  const shown = state.last_discussed.products.length > 0 && state.last_discussed.category === state.category;
+  const stage = !state.category ? 1 : missing.length ? 2 : shown ? 4 : 3;
+  return { stage, missing };
 }
 
 router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
@@ -151,15 +166,19 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
     }
     state = update.state;
 
-    const finish = async (reply: string, cards: StoreProduct[], market: MarketResult, extraLog = "", kind: "reply" | "human" | "off-topic" = "reply", suggestions: string[] = []) => {
+    type Extras = { options?: string[]; comparison?: Comparison | null; cartAdd?: StoreProduct | null };
+    const finish = async (reply: string, cards: StoreProduct[], market: MarketResult, extraLog = "", kind: "reply" | "human" | "off-topic" = "reply", extras: Extras = {}) => {
+      const suggestions = extras.options ?? [];
+      const comparison = extras.comparison ?? null;
+      const cartAdd = extras.cartAdd ?? null;
       const marketForUi = { status: market.status, checkedAt: market.checkedAt, sources: [] as Array<{ title: string; url: string }> };
       let messageId: number | null = null;
       if (sessionId) {
         await saveSessionState(sessionId, state).catch((error) => req.log.warn({ error: String(error) }, "Could not save conversation state"));
         messageId = await logMessage(sessionId, "assistant", reply + extraLog, cards.map((product) => product.id), Date.now() - startedAt,
-          { display: reply, products: cards, market: marketForUi, intent: update.intent, interpretation: update.interpretation || undefined, kind, suggestions });
+          { display: reply, products: cards, market: marketForUi, intent: update.intent, interpretation: update.interpretation || undefined, kind, suggestions, comparison, cartAdd: cartAdd ? { id: cartAdd.id, name: cartAdd.name } : null });
       }
-      res.json(GetShoppingAssistantReplyResponse.parse({ reply, products: cards, market: marketForUi, messageId, kind, suggestions }));
+      res.json(GetShoppingAssistantReplyResponse.parse({ reply, products: cards, market: marketForUi, messageId, kind, suggestions, comparison, cartAdd }));
     };
     const noMarket: MarketResult = { status: "not-needed", checkedAt: null, sources: [], evidence: "" };
 
@@ -172,7 +191,7 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
 
     // Off-topic guardrail: no search, no answer to the topic, one line back to shopping.
     if (update.intent === "off-topic") {
-      await finish(offTopicReply(state), [], noMarket, "", "off-topic");
+      await finish(offTopicReply(state), [], noMarket, "", "off-topic", { options: state.category ? [] : ["Laptop", "Phone", "Headphones", "Something else"] });
       return;
     }
 
@@ -181,7 +200,15 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
     const storeServices = isService ? await storeServiceContext(message, recentUserText, null) : null;
 
     const sessionWebProducts = state.web_products as unknown as StoreProduct[];
-    const allowedLocal = isService ? [] : allowedProducts(state, catalog);
+    let allowedLocal = isService ? [] : allowedProducts(state, catalog);
+    // Fewer than 3 fit: also offer the nearest option(s) above budget, labelled with how far over.
+    if (!isService && state.category && allowedLocal.length < 3) {
+      const nearest = allowedProducts({ ...state, budget_max: null, budget_stretch: null }, catalog)
+        .filter((product) => !allowedLocal.includes(product) && (state.budget_stretch ?? state.budget_max ?? Infinity) < product.price)
+        .sort((a, b) => a.price - b.price).slice(0, Math.min(2, 3 - allowedLocal.length));
+      allowedLocal = [...allowedLocal, ...nearest];
+    }
+    const flow = conversationStage(state);
     const allowedSession = isService ? [] : allowedProducts(state, sessionWebProducts);
 
     let market: MarketResult = noMarket;
@@ -211,7 +238,7 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
             type: "object",
             properties: {
               reply: { type: "string" },
-              productIds: { type: "array", items: { type: "string" }, maxItems: 4 },
+              productIds: { type: "array", items: { type: "string" }, maxItems: 3 },
               externalProducts: {
                 type: "array", maxItems: 3, items: {
                   type: "object", additionalProperties: false,
@@ -225,9 +252,34 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
                   required: ["name", "brand", "category", "priceInr", "priceQuote", "sourceIndex", "specs", "description", "colours", "rating", "reviewCount", "mrpInr"],
                 },
               },
-              suggestions: { type: "array", items: { type: "string" }, maxItems: 3 },
+              options: { type: "array", items: { type: "string" }, maxItems: 6 },
+              productNotes: {
+                type: "array", maxItems: 3, items: {
+                  type: "object", additionalProperties: false,
+                  properties: { id: { type: "string" }, why: { type: "string" }, headsUp: { type: ["string", "null"] } },
+                  required: ["id", "why", "headsUp"],
+                },
+              },
+              comparison: {
+                type: ["object", "null"], additionalProperties: false,
+                properties: {
+                  productIds: { type: "array", items: { type: "string" }, maxItems: 3 },
+                  rows: {
+                    type: "array", maxItems: 8, items: {
+                      type: "object", additionalProperties: false,
+                      properties: {
+                        label: { type: "string" },
+                        values: { type: "array", maxItems: 3, items: { type: "object", additionalProperties: false, properties: { text: { type: "string" }, meetsRequirement: { type: "boolean" } }, required: ["text", "meetsRequirement"] } },
+                      },
+                      required: ["label", "values"],
+                    },
+                  },
+                },
+                required: ["productIds", "rows"],
+              },
+              cartAddId: { type: ["string", "null"] },
             },
-            required: ["reply", "productIds", "externalProducts", "suggestions"],
+            required: ["reply", "productIds", "externalProducts", "options", "productNotes", "comparison", "cartAddId"],
             additionalProperties: false,
           },
         },
@@ -242,6 +294,8 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
             latestMessage: message,
             quotedEarlierMessage: quote ?? null,
             conversationState: stateForModel(state),
+            conversationStage: flow.stage,
+            missingSlots: flow.missing,
             howTheLatestMessageWasRead: update.interpretation || null,
             localCatalog: catalogForModel,
             sessionProducts: sessionForModel,
@@ -254,10 +308,17 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
     const raw = completion.choices[0]?.message.content;
     if (!raw) throw new Error("The recommendation model returned an empty response.");
 
-    const result = JSON.parse(raw) as { reply?: unknown; productIds?: unknown; externalProducts?: unknown; suggestions?: unknown };
-    const suggestions = (Array.isArray(result.suggestions) ? result.suggestions : [])
-      .filter((item): item is string => typeof item === "string" && item.trim().length > 2 && item.length <= 80)
-      .map((item) => sanitizeReply(item.trim())).slice(0, 3);
+    const result = JSON.parse(raw) as { reply?: unknown; productIds?: unknown; externalProducts?: unknown; options?: unknown; productNotes?: unknown; comparison?: unknown; cartAddId?: unknown };
+    const options = (Array.isArray(result.options) ? result.options : [])
+      .filter((item): item is string => typeof item === "string" && item.trim().length > 0 && item.length <= 60)
+      .map((item) => sanitizeReply(item.trim())).filter(Boolean).slice(0, 6);
+    const notes = new Map<string, { why: string; headsUp: string | null }>();
+    for (const note of Array.isArray(result.productNotes) ? result.productNotes : []) {
+      const row = note as { id?: unknown; why?: unknown; headsUp?: unknown };
+      if (typeof row.id === "string" && typeof row.why === "string") {
+        notes.set(row.id, { why: sanitizeReply(row.why).slice(0, 240), headsUp: typeof row.headsUp === "string" && row.headsUp.trim() ? sanitizeReply(row.headsUp).slice(0, 200) : null });
+      }
+    }
     const pool = [...allowedLocal.map((product) => storeProduct(product)), ...allowedSession];
     const byId = new Map(pool.map((product) => [product.id, product]));
     const rawIds: unknown[] = Array.isArray(result.productIds) ? result.productIds : [];
@@ -283,10 +344,35 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
       const merged = [...sessionWebProducts.filter((product) => !webAllowed.some((item) => item.id === product.id)), ...webAllowed];
       state.web_products = merged.slice(-20) as unknown as ConversationState["web_products"];
     }
-    const cards = (state.category ? [...webAllowed, ...recommended] : [])
+    const cards = (state.category ? [...recommended, ...webAllowed] : [])
       .filter((product, index, all) => all.findIndex((item) => item.id === product.id) === index)
-      .slice(0, 4)
-      .map((product) => ({ ...product, overBudgetBy: overBudgetBy(state, product.price) }));
+      .slice(0, 3)
+      .map((product, index) => ({
+        ...product,
+        overBudgetBy: overBudgetBy(state, product.price),
+        why: notes.get(product.id)?.why ?? null,
+        headsUp: notes.get(product.id)?.headsUp ?? null,
+        bestFit: index === 0 && notes.size > 0,
+      }));
+
+    // Products the shopper has seen in this chat (for comparisons and "add to cart").
+    const known = new Map<string, StoreProduct>([...catalog.map((product) => [product.id, storeProduct(product)] as const), ...sessionWebProducts.map((product) => [product.id, product] as const), ...cards.map((product) => [product.id, product] as const)]);
+    let comparison: Comparison | null = null;
+    if (result.comparison && typeof result.comparison === "object") {
+      const raw = result.comparison as { productIds?: unknown; rows?: unknown };
+      const ids = (Array.isArray(raw.productIds) ? raw.productIds : []).filter((id): id is string => typeof id === "string" && known.has(id)).slice(0, 3);
+      const rows = (Array.isArray(raw.rows) ? raw.rows : []).flatMap((row) => {
+        const item = row as { label?: unknown; values?: unknown };
+        if (typeof item.label !== "string" || !Array.isArray(item.values)) return [];
+        const values = item.values.slice(0, ids.length).map((value) => {
+          const cell = value as { text?: unknown; meetsRequirement?: unknown };
+          return { text: typeof cell.text === "string" ? sanitizeReply(cell.text).slice(0, 80) : "", meetsRequirement: cell.meetsRequirement === true };
+        });
+        return values.length === ids.length ? [{ label: item.label.slice(0, 40), values }] : [];
+      }).slice(0, 8);
+      if (ids.length >= 2 && rows.length) comparison = { products: ids.map((id) => ({ id, name: known.get(id)!.name, price: known.get(id)!.price })), rows };
+    }
+    const cartAdd = typeof result.cartAddId === "string" && known.has(result.cartAddId) ? known.get(result.cartAddId)! : null;
 
     const replyText = sanitizeReply(
       typeof result.reply === "string" && result.reply.trim()
@@ -301,7 +387,8 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
     const sourceLog = market.sources.length ? `\n\nMarket sources (checked ${market.checkedAt}):\n${market.sources.map((source, index) => `[${index + 1}] ${source.title}: ${source.url}`).join("\n")}` : "";
     const webLog = fresh.length ? `\n\nWeb product snapshots:\n${JSON.stringify(fresh.map(({ id, name, price, priceSource }) => ({ id, name, price, source: priceSource.url })))}` : "";
     const serviceLog = storeServices ? `\n\nStore service data:\n${JSON.stringify({ ...storeServices, policies: undefined })}` : "";
-    await finish(replyText, cards, market, sourceLog + webLog + serviceLog, "reply", suggestions);
+    const cartLog = cartAdd ? `\n\n[Added to cart by the assistant: ${cartAdd.name}]` : "";
+    await finish(replyText, cards, market, sourceLog + webLog + serviceLog + cartLog, "reply", { options, comparison, cartAdd });
   } catch (error) {
     req.log.error({ error }, "Shopping assistant request failed");
     if (sessionId) await logMessage(sessionId, "error", `Assistant request failed: ${String(error).slice(0, 300)}`).catch(() => undefined);

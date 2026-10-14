@@ -17,12 +17,16 @@ export type ConversationState = {
   use_case: string | null;
   brands_include: string[];
   brands_exclude: string[];
+  /** The shopper said any brand is fine. */
+  brand_no_preference: boolean;
   must_haves: string[];
   items_in_bag: BagItem[];
   /** The product or category the last reply was about, so "cheaper" / "other" can refer back to it. */
   last_discussed: { category: string | null; products: string[] };
   /** A shopping request sent before the participant gave a name; answered right after the name. */
   pending_request: string | null;
+  /** The first reply was a shopping request, so the chat went on without a name. */
+  name_skipped: boolean;
   verbosity: Verbosity;
   mode: ShoppingMode | null;
   /** Products fetched from the web in this conversation, kept so prices and details stay the same. Not sent to the model as state. */
@@ -38,10 +42,12 @@ export const EMPTY_STATE: ConversationState = {
   use_case: null,
   brands_include: [],
   brands_exclude: [],
+  brand_no_preference: false,
   must_haves: [],
   items_in_bag: [],
   last_discussed: { category: null, products: [] },
   pending_request: null,
+  name_skipped: false,
   verbosity: "normal",
   mode: null,
   web_products: [],
@@ -68,6 +74,7 @@ export function normalizeState(input: unknown): ConversationState {
     use_case: text(raw.use_case),
     brands_include: strings(raw.brands_include),
     brands_exclude: strings(raw.brands_exclude),
+    brand_no_preference: raw.brand_no_preference === true,
     must_haves: strings(raw.must_haves),
     items_in_bag: Array.isArray(raw.items_in_bag)
       ? raw.items_in_bag.flatMap((item) => {
@@ -81,6 +88,7 @@ export function normalizeState(input: unknown): ConversationState {
       : [],
     last_discussed: { category: category(last.category), products: strings(last.products, 6) },
     pending_request: text(raw.pending_request, 1000),
+    name_skipped: raw.name_skipped === true,
     verbosity: raw.verbosity === "short" || raw.verbosity === "detailed" ? raw.verbosity : "normal",
     mode: raw.mode === "help-me-choose" || raw.mode === "know-what-i-want" ? raw.mode : null,
     web_products: Array.isArray(raw.web_products)
@@ -95,7 +103,7 @@ export function normalizeState(input: unknown): ConversationState {
 
 /** The state as the model sees it (without the product cache). */
 export function stateForModel(state: ConversationState) {
-  const { web_products: _cache, pending_request: _pending, ...rest } = state;
+  const { web_products: _cache, pending_request: _pending, name_skipped: _skipped, ...rest } = state;
   return rest;
 }
 
@@ -118,10 +126,11 @@ const STATE_SCHEMA = {
     use_case: { type: ["string", "null"] },
     brands_include: { type: "array", items: { type: "string" } },
     brands_exclude: { type: "array", items: { type: "string" } },
+    brand_no_preference: { type: "boolean" },
     must_haves: { type: "array", items: { type: "string" } },
     last_discussed_category: { type: ["string", "null"], enum: [...CATEGORIES, null] },
   },
-  required: ["intent", "interpretation", "category", "budget_max", "budget_stretch", "use_case", "brands_include", "brands_exclude", "must_haves", "last_discussed_category"],
+  required: ["intent", "interpretation", "category", "budget_max", "budget_stretch", "use_case", "brands_include", "brands_exclude", "brand_no_preference", "must_haves", "last_discussed_category"],
 } as const;
 
 const STATE_INSTRUCTIONS = `You keep the structured "known so far" state for an electronics shopping chat in India. You do not talk to the shopper.
@@ -131,7 +140,7 @@ Rules:
 - Overwrite a field when the shopper changes it (budget 1.5L -> 1.99L, earphones -> TV). Never keep both values. Keep fields the shopper did not change.
 - category: what the shopper is shopping for right now (one of the enum values). When the category changes, reset budget_max, budget_stretch, use_case and must_haves unless the shopper restates them, because they belonged to the old item.
 - Budgets are numbers in rupees: "50k" = 50000, "1.5L"/"1.5 lakh" = 150000, "1.99L" = 199000. budget_stretch is a higher amount the shopper says they could stretch to ("max 60k, can go to 65k"); otherwise null.
-- brands_exclude: "no Sony" / "not Samsung" removes that BRAND only; it never removes the category. brands_include: brands the shopper asks for.
+- brands_exclude: "no Sony" / "not Samsung" removes that BRAND only; it never removes the category. brands_include: brands the shopper asks for. brand_no_preference: true when the shopper says any brand is fine / no preference; false once they name or reject a brand.
 - "cheaper", "other", "another one", "something else" refer to the LAST product or category discussed (last_discussed), even if that is an add-on like a charging cable, not the main product. Say so in interpretation.
 - "no X" / "not X" right after the assistant suggested X is a correction ("I didn't mean X"): drop X from the current request and do not add a lasting filter unless X is clearly a brand the shopper rejects.
 - must_haves: concrete requirements in a few words each ("ANC", "16GB RAM", "good camera").
@@ -178,6 +187,7 @@ export async function updateConversationState(
     use_case: result.use_case,
     brands_include: result.brands_include,
     brands_exclude: result.brands_exclude,
+    brand_no_preference: result.brand_no_preference,
     must_haves: result.must_haves,
     last_discussed: { category: result.last_discussed_category ?? previous.last_discussed.category, products: previous.last_discussed.products },
   });

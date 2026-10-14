@@ -52,8 +52,11 @@ function App() {
 }
 
 function ChatProviderWithCart({ children }: { children: ReactNode }) {
-  const { cart } = useCart();
-  return <ChatProvider cart={cart}>{children}</ChatProvider>;
+  const { cart, add } = useCart();
+  const { toast } = useToast();
+  // The assistant can add a product after the shopper asks it to.
+  const onCartAdd = (product: Product) => { add(product); toast({ title: 'Added to cart', description: product.name }); };
+  return <ChatProvider cart={cart} onCartAdd={onCartAdd}>{children}</ChatProvider>;
 }
 
 /** The chat and bag live outside the routes, so they stay open (same conversation) when the page changes. */

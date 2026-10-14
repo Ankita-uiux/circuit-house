@@ -16,6 +16,8 @@ const cases: Array<[string, string | null, string | null]> = [
   ['mera naam rohit hai', 'Rohit', null],
   ['I am looking for a laptop', null, 'I am looking for a laptop'],
   ['what is this?', null, null],
+  ['call me NB', 'NB', null],
+  ["hey, I'm Priya", 'Priya', null],
 ];
 
 for (const [input, name, request] of cases) {

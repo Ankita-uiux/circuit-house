@@ -257,30 +257,9 @@ function AdminSettings({ password, passwordRequired, onLocked }: { password: str
                   <span className="admin-panel-index">VOICE</span>
                 </div>
                 <div className="admin-fields">
-                  <FormField
-                    control={form.control}
-                    name="persona"
-                    rules={{ required: 'Add a persona before saving.', maxLength: { value: 1200, message: 'Keep the persona under 1,200 characters.' } }}
-                    render={({ field, fieldState }) => (
-                      <FormItem className="admin-field">
-                        <div className="admin-field-label-line"><FormLabel className="admin-field-label">Persona</FormLabel><span className="admin-char-count">{field.value.length} / 1,200</span></div>
-                        <FormControl><textarea {...field} className="admin-textarea" rows={4} maxLength={1200} placeholder="Describe who the assistant is, what it knows, and how it should help." aria-label="Assistant persona" data-testid="input-assistant-persona" /></FormControl>
-                        <div className="admin-field-foot"><span>{fieldState.error?.message ?? 'Ground the assistant in your shop, products, and practical expertise.'}</span></div>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="tone"
-                    rules={{ required: 'Add a tone before saving.', maxLength: { value: 800, message: 'Keep the tone under 800 characters.' } }}
-                    render={({ field, fieldState }) => (
-                      <FormItem className="admin-field">
-                        <div className="admin-field-label-line"><FormLabel className="admin-field-label">Tone</FormLabel><span className="admin-char-count">{field.value.length} / 800</span></div>
-                        <FormControl><textarea {...field} className="admin-textarea admin-textarea-short" rows={3} maxLength={800} placeholder="Set the feel of each reply: measured, warm, direct…" aria-label="Assistant tone" data-testid="input-assistant-tone" /></FormControl>
-                        <div className="admin-field-foot"><span>{fieldState.error?.message ?? 'A few words about pacing, warmth, and how direct to be.'}</span></div>
-                      </FormItem>
-                    )}
-                  />
+                  <p className="admin-help" data-testid="text-team-prompt">
+                    The assistant’s role, scope, rules and 4-stage conversation flow now come from the team prompt (in <code>artifacts/api-server/src/lib/assistant-behavior.ts</code>), so they are the same for every test. Use the empathy and initiative settings below to tune how it sounds for each round of testing.
+                  </p>
                 </div>
               </section>
 
@@ -305,37 +284,10 @@ function AdminSettings({ password, passwordRequired, onLocked }: { password: str
                     name="goalOrientationScale"
                     control={form.control}
                     title="Initiative"
-                    detail="How actively it guides the shopper toward the conversation goal you define below."
+                    detail="How actively it guides the shopper through the conversation stages to a decision."
                     low="Passive"
                     high="Goal-oriented"
                     testId="slider-goal-orientation"
-                  />
-                  <FormField
-                    control={form.control}
-                    name="initiativeGoal"
-                    rules={{ required: 'Add a conversation goal before saving.', maxLength: { value: 1200, message: 'Keep the goal under 1,200 characters.' } }}
-                    render={({ field, fieldState }) => (
-                      <FormItem className="admin-goal-field">
-                        <div className="admin-field-label-line">
-                          <FormLabel className="admin-field-label">Conversation goal</FormLabel>
-                          <span className="admin-char-count">{field.value.length} / 1,200</span>
-                        </div>
-                        <FormControl>
-                          <textarea
-                            {...field}
-                            className="admin-textarea admin-goal-textarea"
-                            rows={3}
-                            maxLength={1200}
-                            placeholder="Describe what you want the assistant to help shoppers accomplish."
-                            aria-label="Assistant conversation goal"
-                            data-testid="input-assistant-initiative-goal"
-                          />
-                        </FormControl>
-                        <div className="admin-field-foot">
-                          <span>{fieldState.error?.message ?? 'The initiative score controls how actively the assistant works toward this goal.'}</span>
-                        </div>
-                      </FormItem>
-                    )}
                   />
                 </div>
                 <div className="admin-range-note"><span>Both scales run from 0 to 10.</span><span>Recommendations use catalog facts and cited market sources.</span></div>
