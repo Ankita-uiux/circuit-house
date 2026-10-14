@@ -1,9 +1,11 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { ArrowDown, ChevronRight, CornerUpLeft, MessageCircle, Plus, Send, SquarePen, X } from 'lucide-react';
+import { ArrowDown, ChevronRight, CornerUpLeft, MessageCircle, Send, ShoppingCart, SquarePen, X } from 'lucide-react';
 import type { Product } from '@workspace/api-client-react';
 import { useToast } from '@/hooks/use-toast';
 import { useChatInactivity } from '@/hooks/use-chat-inactivity';
-import { ProductVisual, formatPrice } from '@/shared';
+import { formatPrice } from '@/shared';
+import { useCart } from '@/cart';
+import { ChooseOptionsSheet, ProductCarousel } from './ProductCards';
 import { useChat, type ChatMessage } from './chat-context';
 import { TEST_CARDS, postSessionEvent, readFacilitatorMode } from './session-events';
 
@@ -27,7 +29,7 @@ export function AssistantLauncher() {
  * The chat panel. It stays mounted while closed, so reopening it shows the same
  * conversation at the same scroll position.
  */
-export function AssistantPanel({ onAdd }: { onAdd: (product: Product) => void }) {
+export function AssistantPanel() {
   const chat = useChat();
   const { open, setOpen, messages, pending, participantName, prompt, setPrompt, quote, setQuote, send, error, loading } = chat;
   const { toast } = useToast();
@@ -38,6 +40,19 @@ export function AssistantPanel({ onAdd }: { onAdd: (product: Product) => void })
   const seen = useRef(messages.length);
   const [unread, setUnread] = useState<number | null>(null);
   const collectingName = !participantName;
+  const cart = useCart();
+  const [sheet, setSheet] = useState<Product | null>(null);
+  const askAbout = (product: Product) => {
+    setQuote(`${product.name} · ${formatPrice(product.price)}`);
+    setPrompt('');
+    inputRef.current?.focus();
+  };
+
+  // On wide screens the page makes room for the panel, so the chat sits beside it.
+  useEffect(() => {
+    document.documentElement.classList.toggle('chat-open', open);
+    return () => document.documentElement.classList.remove('chat-open');
+  }, [open]);
 
   useChatInactivity(open && !!participantName, !!pending, chat.sessionId, messages.length, () => {
     chat.pushLocal({ role: 'assistant', content: 'Are you still there?' });
@@ -49,10 +64,13 @@ export function AssistantPanel({ onAdd }: { onAdd: (product: Product) => void })
   useEffect(() => { if (open) inputRef.current?.focus({ preventScroll: true }); }, [open]);
   useEffect(() => {
     if (!open) return;
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || cart.open) return;
+      if (sheet) setSheet(null); else setOpen(false);
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, setOpen]);
+  }, [open, setOpen, sheet, cart.open]);
 
   const scrollToMessage = (index: number, behavior: ScrollBehavior = 'smooth') => {
     const list = listRef.current;
@@ -119,8 +137,9 @@ export function AssistantPanel({ onAdd }: { onAdd: (product: Product) => void })
       <aside className={`assistant-panel${open ? ' is-open' : ''}`} role="dialog" aria-labelledby="assistant-panel-title" aria-hidden={!open} inert={!open} data-testid="panel-assistant">
         <header className="assistant-panel-top">
           <h2 id="assistant-panel-title">Ask Circuit <span className="assistant-beta">Beta</span></h2>
+          <button type="button" className="assistant-icon-btn assistant-bag-btn" onClick={() => cart.setOpen(true)} aria-label={`Open bag, ${cart.count} items`} title="Bag" data-testid="button-chat-bag"><ShoppingCart size={18} />{cart.count > 0 && <span className="cx-cart-count">{cart.count}</span>}</button>
           <button type="button" className="assistant-icon-btn" onClick={chat.newChat} disabled={!!pending} aria-label="Start a new chat" title="New chat" data-testid="button-new-chat"><SquarePen size={18} /></button>
-          <button type="button" className="assistant-icon-btn" onClick={() => setOpen(false)} aria-label="Close the shopping assistant" title="Close" data-testid="button-close-assistant"><X size={18} /></button>
+          <button type="button" className="assistant-icon-btn" onClick={() => setOpen(false)} aria-label="Close the shopping assistant" title="Close" data-testid="button-close-assistant" data-close><X size={18} /></button>
         </header>
         {facilitator && <FacilitatorBar sessionId={chat.sessionId} onNewSession={chat.newParticipant} />}
 
@@ -131,21 +150,7 @@ export function AssistantPanel({ onAdd }: { onAdd: (product: Product) => void })
               <div className={`assistant-message ${message.role}`} data-testid={`message-${message.role}-${index}`}>
                 {message.role === 'assistant' ? <FormattedReply text={message.content} /> : message.content}
               </div>
-              {!!message.products?.length && (
-                <div className="assistant-picks">
-                  {message.products.map((product) => (
-                    <div key={product.id} className="assistant-pick">
-                      <div className="assistant-pick-thumb"><ProductVisual product={product} size="thumb" /></div>
-                      <div className="assistant-pick-info">
-                        <span className="assistant-pick-category">{product.category}</span>
-                        <strong>{product.name}</strong>
-                        <span className="assistant-pick-price">{formatPrice(product.price)}</span>
-                      </div>
-                      <button type="button" className="assistant-pick-add" onClick={() => onAdd(product)} data-testid={`assistant-match-${product.id}`}><Plus size={13} /> Add to bag</button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {!!message.products?.length && <ProductCarousel products={message.products} onChoose={setSheet} onAsk={askAbout} />}
               <div className="assistant-turn-meta">
                 {message.createdAt && <time dateTime={message.createdAt}>{timeFormat.format(new Date(message.createdAt))}</time>}
                 {message.role === 'assistant' && index > 0 && !collectingName && !message.local && (
@@ -163,6 +168,8 @@ export function AssistantPanel({ onAdd }: { onAdd: (product: Product) => void })
         {unread !== null && (
           <button type="button" className="assistant-new-pill" onClick={() => { scrollToMessage(unread); setUnread(null); }} data-testid="button-new-message">New message <ArrowDown size={13} /></button>
         )}
+
+        {sheet && <ChooseOptionsSheet product={sheet} onClose={() => setSheet(null)} />}
 
         <div className="assistant-panel-bottom">
           {!collectingName && !pending && messages.length <= 3 && messages[messages.length - 1]?.role === 'assistant' && (

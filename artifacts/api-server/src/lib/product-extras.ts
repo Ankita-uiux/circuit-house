@@ -37,7 +37,7 @@ const COLOUR_HEX: Array<[RegExp, string]> = [
   [/white|snow|cloud|pearl|ivory|porcelain|chalk/i, "#f4f4f2"],
   [/silver|platinum|titanium|natural|steel|grey|gray|ash|stone/i, "#b9bcc0"],
   [/starlight|cream|beige|sand|desert|champagne|gold/i, "#e6d6b8"],
-  [/blue|navy|ocean|sky|sapphire|aqua|teal|cyan|denim|ice/i, "#3f6fb5"],
+  [/blue|navy|indigo|ocean|sky|sapphire|aqua|teal|cyan|denim|ice/i, "#3f6fb5"],
   [/green|mint|olive|sage|emerald|lime|forest|jade/i, "#4f8a64"],
   [/red|crimson|burgundy|wine|ruby|coral/i, "#b63a3a"],
   [/pink|rose|blush|lavender|lilac/i, "#e6a6be"],

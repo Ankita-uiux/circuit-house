@@ -1,174 +1,71 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, MapPin, Minus, Plus, Search, ShieldCheck, ShoppingBag, ShoppingCart, X, ExternalLink } from 'lucide-react';
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { searchCatalog } from '../../../lib/catalog-search';
-import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
+import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { getListProductsQueryKey, useListProducts } from '@workspace/api-client-react';
 import type { Product } from '@workspace/api-client-react';
-import { CATEGORY_ICONS, ProductVisual, formatPrice, type CartLine } from './shared';
+import { CATEGORY_ICONS, formatPrice } from './shared';
+import { CartProvider, useCart } from './cart';
 import { ChatProvider, useChat } from './chat/chat-context';
 import { AssistantLauncher, AssistantPanel } from './chat/AssistantPanel';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { CartDrawer } from '@/components/cart-drawer';
+import { CATEGORY_ORDER, Header, SiteFooter } from '@/components/layout';
+import { StoreProductCard } from '@/components/store-ui';
 import { useToast } from '@/hooks/use-toast';
 import { ChatArt, FestiveArt, LaptopArt, PhonesArt } from './banners';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import AdminPage from '@/pages/admin';
+import Checkout from '@/pages/checkout';
 import NotFound from '@/pages/not-found';
+import ProductPage from '@/pages/product';
 
 const queryClient = new QueryClient();
 
 
-function readCart(): CartLine[] {
-  try {
-    const saved = localStorage.getItem('circuit-house-cart');
-    return saved ? JSON.parse(saved) as CartLine[] : [];
-  } catch {
-    return [];
-  }
-}
-
 function App() {
-  const [cart, setCart] = useState<CartLine[]>(readCart);
-  const [cartOpen, setCartOpen] = useState(false);
-  const updateCart = (next: CartLine[]) => {
-    setCart(next);
-    localStorage.setItem('circuit-house-cart', JSON.stringify(next));
-  };
-  const addToCart = (product: Product) => {
-    const existing = cart.find((line) => line.product.id === product.id);
-    updateCart(existing
-      ? cart.map((line) => line.product.id === product.id ? { ...line, product, quantity: line.quantity + 1 } : line)
-      : [...cart, { product, quantity: 1 }]);
-  };
-  const changeQuantity = (id: string, amount: number) => {
-    updateCart(cart.flatMap((line) => {
-      if (line.product.id !== id) return [line];
-      const quantity = line.quantity + amount;
-      return quantity > 0 ? [{ ...line, quantity }] : [];
-    }));
-  };
-  const clearCart = () => updateCart([]);
-  const cartCount = cart.reduce((sum, line) => sum + line.quantity, 0);
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <ChatProvider cart={cart}>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <RoutedErrorBoundary>
-            <Switch>
-              <Route path="/">
-                <Home cartCount={cartCount} addToCart={addToCart} cart={cart} changeQuantity={changeQuantity} cartOpen={cartOpen} setCartOpen={setCartOpen} />
-              </Route>
-              <Route path="/checkout">
-                <Checkout cart={cart} clearCart={clearCart} />
-              </Route>
-              <Route path="/admin">
-                <AdminPage />
-              </Route>
-              <Route component={NotFound} />
-            </Switch>
-          </RoutedErrorBoundary>
-          <StoreChat onAdd={addToCart} />
-        </WouterRouter>
-        </ChatProvider>
+        <CartProvider>
+          <ChatProviderWithCart>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+              <RoutedErrorBoundary>
+                <Switch>
+                  <Route path="/"><Home /></Route>
+                  <Route path="/product/:id"><ProductPage /></Route>
+                  <Route path="/checkout"><Checkout /></Route>
+                  <Route path="/admin"><AdminPage /></Route>
+                  <Route component={NotFound} />
+                </Switch>
+              </RoutedErrorBoundary>
+              <StoreChat />
+            </WouterRouter>
+          </ChatProviderWithCart>
+        </CartProvider>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
   );
 }
 
-/** The chat lives outside the routes, so it stays open (same conversation) when the page changes. */
-function StoreChat({ onAdd }: { onAdd: (product: Product) => void }) {
+function ChatProviderWithCart({ children }: { children: ReactNode }) {
+  const { cart } = useCart();
+  return <ChatProvider cart={cart}>{children}</ChatProvider>;
+}
+
+/** The chat and bag live outside the routes, so they stay open (same conversation) when the page changes. */
+function StoreChat() {
   const [location] = useLocation();
-  const { toast } = useToast();
   if (location.startsWith('/admin')) return null;
-  const add = (product: Product) => { onAdd(product); toast({ title: 'Added to cart', description: product.name }); };
-  return <><AssistantLauncher /><AssistantPanel onAdd={add} /></>;
+  return <><AssistantLauncher /><AssistantPanel /><CartDrawer /></>;
 }
 
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
-}
-
-const CATEGORY_ORDER = ['Phones', 'Laptops', 'Tablets', 'Cameras', 'Gaming', 'TVs', 'Audio', 'Wearables', 'Accessories'] as const;
-
-function Logo() {
-  return (
-    <Link href="/" className="cx-logo" aria-label="Circuit House home" data-testid="link-home">
-      <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
-        <rect x="1" y="1" width="30" height="30" rx="8" fill="var(--cx-accent)" />
-        <path d="M21.5 10.2a7.6 7.6 0 1 0 0 11.6" fill="none" stroke="var(--cx-accent-ink)" strokeWidth="3" strokeLinecap="round" />
-        <circle cx="21.5" cy="10.2" r="2.3" fill="var(--cx-accent-ink)" />
-        <circle cx="21.5" cy="21.8" r="2.3" fill="var(--cx-accent-ink)" />
-      </svg>
-      <span className="cx-logo-word">circuit<b>house</b></span>
-    </Link>
-  );
-}
-
-function readPincode() {
-  try { return localStorage.getItem('circuit-house-pincode') ?? ''; } catch { return ''; }
-}
-
-function Header({
-  count, onCart, search, onSearch, onSubmitSearch,
-}: {
-  count: number;
-  onCart?: () => void;
-  search?: string;
-  onSearch?: (value: string) => void;
-  onSubmitSearch?: () => void;
-}) {
-  const [pincode, setPincode] = useState(readPincode);
-  const [pinOpen, setPinOpen] = useState(false);
-  const [draft, setDraft] = useState('');
-  const savePincode = (event: FormEvent) => {
-    event.preventDefault();
-    if (draft.length !== 6) return;
-    setPincode(draft);
-    try { localStorage.setItem('circuit-house-pincode', draft); } catch { /* keep in memory */ }
-    setPinOpen(false);
-  };
-  return (
-    <header className="cx-header">
-      <div className="cx-header-inner">
-        <Logo />
-        {onSearch ? (
-          <form className="cx-search" role="search" onSubmit={(event) => { event.preventDefault(); onSubmitSearch?.(); }}>
-            <input type="search" value={search ?? ''} onChange={(event) => onSearch(event.target.value)} placeholder="What are you looking for?" aria-label="Search products" data-testid="input-product-search" />
-            <button type="submit" aria-label="Search"><Search size={18} /></button>
-          </form>
-        ) : <div className="cx-search-spacer" />}
-        <div className="cx-header-actions">
-          <div className="cx-pin-wrap">
-            <button type="button" className="cx-pin" onClick={() => { setDraft(pincode); setPinOpen((open) => !open); }} aria-expanded={pinOpen} data-testid="button-pincode">
-              <MapPin size={17} />
-              <span>{pincode ? <>Deliver to <b>{pincode}</b></> : 'Select pincode'}</span>
-            </button>
-            {pinOpen && (
-              <form className="cx-pin-pop" onSubmit={savePincode}>
-                <label htmlFor="cx-pincode">Delivery pincode</label>
-                <div className="cx-pin-row">
-                  <input id="cx-pincode" inputMode="numeric" autoComplete="postal-code" maxLength={6} value={draft} onChange={(event) => setDraft(event.target.value.replace(/\D/g, ''))} placeholder="e.g. 411001" data-testid="input-pincode" />
-                  <button type="submit" disabled={draft.length !== 6}>Apply</button>
-                </div>
-                <p>Demo store: the pincode is only shown in the header.</p>
-              </form>
-            )}
-          </div>
-          {onCart && (
-            <button className="cx-cart" aria-label="Open cart" onClick={onCart} data-testid="button-open-cart">
-              <ShoppingCart size={21} />
-              {count > 0 && <span className="cx-cart-count" data-testid="text-cart-count">{count}</span>}
-            </button>
-          )}
-        </div>
-      </div>
-    </header>
-  );
 }
 
 type SlidePhoto = { src: string; alt: string; credit: string; creditUrl: string };
@@ -246,60 +143,22 @@ function ProductRow({
         </div>
       </div>
       <div className="cx-row-track" ref={track}>
-        {products.map((product) => <ProductCard key={product.id} product={product} onAdd={() => onAdd(product)} context={id} />)}
+        {products.map((product) => <StoreProductCard key={product.id} product={product} onAdd={() => onAdd(product)} context={id} />)}
       </div>
     </section>
   );
 }
 
-function SiteFooter({ onAsk, onCategory }: { onAsk?: () => void; onCategory?: (category: string) => void }) {
-  return (
-    <footer className="cx-footer">
-      <div className="cx-footer-inner">
-        <div className="cx-footer-brand">
-          <Logo />
-          <p>A student class project that simulates shopping for electronics in India, with an AI shopping copilot. Not a real store.</p>
-        </div>
-        <nav aria-label="Shop by category">
-          <h3>Shop</h3>
-          <ul>
-            {CATEGORY_ORDER.map((category) => (
-              <li key={category}>{onCategory ? <button type="button" onClick={() => onCategory(category)}>{category}</button> : <Link href="/">{category}</Link>}</li>
-            ))}
-          </ul>
-        </nav>
-        <div>
-          <h3>Help</h3>
-          <ul>
-            {onAsk && <li><button type="button" onClick={onAsk}>Ask Circuit, our shopping copilot</button></li>}
-            <li><Link href="/checkout">Cart and demo checkout</Link></li>
-          </ul>
-        </div>
-        <div>
-          <h3>About prices</h3>
-          <p>Prices are reference prices from Indian retailers and tech sites, checked October 2026. Tap “Ref. price” on any product to see its source.</p>
-        </div>
-      </div>
-      <div className="cx-footer-base">© 2026 Circuit House · Class project. Not affiliated with any brand or retailer shown.</div>
-    </footer>
-  );
-}
-
-function Home({
-  cartCount, addToCart, cart, changeQuantity, cartOpen, setCartOpen,
-}: {
-  cartCount: number;
-  addToCart: (product: Product) => void;
-  cart: CartLine[];
-  changeQuantity: (id: string, amount: number) => void;
-  cartOpen: boolean;
-  setCartOpen: (open: boolean) => void;
-}) {
+function Home() {
   const productsQuery = useListProducts({ query: { queryKey: getListProductsQueryKey() } });
   const products = useMemo(() => productsQuery.data ?? [], [productsQuery.data]);
   const { toast } = useToast();
+  const cart = useCart();
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('Everything');
+  const [category, setCategory] = useState(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get('category');
+    return fromUrl && (CATEGORY_ORDER as readonly string[]).includes(fromUrl) ? fromUrl : 'Everything';
+  });
   const [sort, setSort] = useState('recommended');
   const chat = useChat();
   const catalogRef = useRef<HTMLElement>(null);
@@ -307,8 +166,14 @@ function Home({
   const goToCatalog = () => catalogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const goToRow = (id: string) => document.getElementById(`row-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const showCategory = (value: string) => { setCategory(value); setSearch(''); goToCatalog(); };
+  // Arriving from a breadcrumb or footer link with ?category=… opens the catalog at that category.
+  useEffect(() => {
+    if (productsQuery.isSuccess && new URLSearchParams(window.location.search).get('category')) goToCatalog();
+    // once, when products have loaded
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productsQuery.isSuccess]);
   const add = (product: Product) => {
-    addToCart(product);
+    cart.add(product);
     toast({ title: 'Added to cart', description: product.name });
   };
 
@@ -394,7 +259,7 @@ function Home({
 
   return (
     <div className="cx-store">
-      <Header count={cartCount} onCart={() => setCartOpen(true)} search={search} onSearch={setSearch} onSubmitSearch={goToCatalog} />
+      <Header search={search} onSearch={setSearch} onSubmitSearch={goToCatalog} />
       <main className="cx-main">
         <HeroCarousel slides={slides} />
 
@@ -450,105 +315,18 @@ function Home({
             <div className="cx-empty"><strong>Can’t see it here?</strong><p>Ask Circuit. It can find the exact model for you, or try a different model or budget.</p><button type="button" className="cx-chip active" onClick={askAboutSearch}>Ask Circuit to find it</button><button type="button" className="cx-chip" onClick={() => { setSearch(''); setCategory('Everything'); }} data-testid="button-reset-filters">Clear filters</button></div>
           ) : (
             <div className="cx-grid">
-              {visibleProducts.map((product) => <ProductCard key={product.id} product={product} onAdd={() => add(product)} />)}
+              {visibleProducts.map((product) => <StoreProductCard key={product.id} product={product} onAdd={() => add(product)} />)}
             </div>
           )}
         </section>
       </main>
-      <SiteFooter onAsk={() => chat.setOpen(true)} onCategory={showCategory} />
-      {cartOpen && <CartDrawer cart={cart} changeQuantity={changeQuantity} onClose={() => setCartOpen(false)} />}
+      <SiteFooter onCategory={showCategory} />
     </div>
-  );
-}
-
-function ProductCard({ product, onAdd, context }: { product: Product; onAdd: () => void; context?: string }) {
-  const tid = context ? `${context}-${product.id}` : product.id;
-  return (
-    <article className="cx-card" data-testid={`card-product-${tid}`}>
-      <div className="cx-card-media">
-        <ProductVisual product={product} />
-        {product.badge && <span className="cx-badge">{product.badge}</span>}
-      </div>
-      <div className="cx-card-body">
-        <span className="cx-card-brand">{product.brand}</span>
-        <h3 title={product.name}>{product.name}</h3>
-        <ul className="cx-card-specs">
-          {product.specs.slice(0, 2).map((spec) => <li key={spec}>{spec}</li>)}
-        </ul>
-        <div className="cx-card-price">
-          <span className="cx-price">{formatPrice(product.price)}</span>
-          <a className="cx-ref" href={product.priceSource.url} target="_blank" rel="noreferrer" title={`Reference price from ${product.priceSource.label}`} data-testid={`link-price-source-${tid}`}>
-            Ref. price · {product.priceSource.asOf} <ExternalLink size={10} />
-          </a>
-        </div>
-        <button type="button" className="cx-add" onClick={onAdd} aria-label={`Add ${product.name} to cart`} data-testid={`button-add-${tid}`}><ShoppingCart size={15} /> Add to cart</button>
-      </div>
-    </article>
   );
 }
 
 function ProductSkeleton() {
   return <div className="cx-grid" aria-label="Loading products">{[0, 1, 2, 3].map((item) => <div key={item} className="cx-card cx-card-skeleton"><div className="cx-card-media" /><div className="cx-card-body"><span /><span /><span /></div></div>)}</div>;
-}
-
-function CartDrawer({ cart, changeQuantity, onClose }: { cart: CartLine[]; changeQuantity: (id: string, amount: number) => void; onClose: () => void }) {
-  const subtotal = cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0);
-  return (
-    <div className="cart-drawer-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <aside className="cart-drawer" aria-label="Your cart">
-        <div className="drawer-top"><h2>Your bag <span style={{ color: '#8a9588', font: '12px var(--app-font-mono)' }}>({cart.reduce((sum, line) => sum + line.quantity, 0)})</span></h2><button className="icon-button" onClick={onClose} aria-label="Close cart" data-testid="button-close-cart"><X size={17} /></button></div>
-        {cart.length ? <>
-          <div className="drawer-items">{cart.map(({ product, quantity }) => <div className="cart-row" key={product.id}>
-            <div className="cart-thumb"><ProductVisual product={product} size="thumb" /></div>
-            <div><h3>{product.name}</h3><small>{formatPrice(product.price)} each</small><div className="qty-controls"><button onClick={() => changeQuantity(product.id, -1)} aria-label={`Remove one ${product.name}`} data-testid={`button-decrease-${product.id}`}><Minus size={12} /></button><span>{quantity}</span><button onClick={() => changeQuantity(product.id, 1)} aria-label={`Add one ${product.name}`} data-testid={`button-increase-${product.id}`}><Plus size={12} /></button></div></div>
-            <div className="cart-row-price">{formatPrice(product.price * quantity)}</div>
-          </div>)}</div>
-          <div className="drawer-total"><div className="subtotal-line"><span>Subtotal</span><strong>{formatPrice(subtotal)}</strong></div><Link className="checkout-link" href="/checkout" onClick={onClose} data-testid="link-checkout">Continue to demo checkout <ArrowRight size={15} /></Link><div className="drawer-note">Taxes and delivery are not calculated in this demo.</div></div>
-        </> : <div className="cart-empty"><ShoppingBag size={29} /><strong>Your bag is taking a breather.</strong><p>When something feels right, add it here and we’ll keep it safe.</p><button className="category-tab active" onClick={onClose} data-testid="button-continue-shopping">Keep looking</button></div>}
-      </aside>
-    </div>
-  );
-}
-
-function Checkout({ cart, clearCart }: { cart: CartLine[]; clearCart: () => void }) {
-  const [confirmed, setConfirmed] = useState(false);
-  const subtotal = cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0);
-  const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0);
-  const finishDemo = () => { setConfirmed(true); clearCart(); };
-  return (
-    <div className="checkout-page cx-checkout">
-      <Header count={itemCount} />
-      <main className="checkout-main">
-        <Link href="/" className="checkout-back" data-testid="link-back-store"><ArrowLeft size={14} /> Back to the store</Link>
-        <div className="checkout-grid">
-          <div>
-            <div className="eyebrow">The final check</div>
-            <h1 className="checkout-title">Checkout,<br />without the charge.</h1>
-            <p className="checkout-subtitle">This is a demo confirmation only. No card details, payment provider, or real order is involved.</p>
-            <div className="demo-banner"><ShieldCheck size={18} /><div><strong>Demo checkout — no payment will be taken</strong>Press the confirmation button to see the completed demo state. Nothing is sent or charged.</div></div>
-            <div style={{ color: '#7a8278', fontSize: 10, lineHeight: 1.7 }}>Circuit House offers clear, human guidance. This storefront preview demonstrates the shopping flow, not a live transaction.</div>
-          </div>
-          <section className="confirmation-card" aria-label="Order summary">
-            {confirmed ? <div className="confirmed-state">
-              <div className="confirmed-icon"><Check size={25} /></div>
-              <h2>Demo complete.</h2>
-              <p>Your sample checkout is confirmed. No order was placed and no payment was made. Your bag has been cleared.</p>
-              <Link href="/" data-testid="link-return-store">Back to Circuit House <ArrowRight size={14} /></Link>
-            </div> : <>
-              <h2>Your order summary</h2>
-              {!cart.length ? <div className="empty-state" style={{ padding: '28px 10px' }}><ShoppingBag size={22} /><strong>Your bag is empty.</strong><p>Explore the catalog and add something to see it here.</p><Link href="/" className="checkout-back" data-testid="link-empty-cart-store">Browse the store <ArrowRight size={13} /></Link></div> : <>
-                {cart.map(({ product, quantity }) => <div className="checkout-product" key={product.id}><div><div className="checkout-product-name">{product.name}</div><div className="checkout-product-meta">Qty {quantity} · {product.category}</div></div><div className="checkout-product-price">{formatPrice(product.price * quantity)}</div></div>)}
-                <div className="checkout-totals"><div><span>Subtotal</span><span>{formatPrice(subtotal)}</span></div><div><span>Delivery</span><span>Not calculated</span></div><div className="grand"><span>Total in demo</span><span>{formatPrice(subtotal)}</span></div></div>
-                <button className="demo-confirm" onClick={finishDemo} data-testid="button-confirm-demo">Confirm demo checkout — no payment</button>
-                <div className="drawer-note">For demonstration only. This button does not process a payment.</div>
-              </>}
-            </>}
-          </section>
-        </div>
-      </main>
-      <SiteFooter />
-    </div>
-  );
 }
 
 export default App;

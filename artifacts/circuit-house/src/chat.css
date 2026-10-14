@@ -53,3 +53,8 @@
 /* Admin help text (product data panel) */
 .admin-help { margin: 0 0 12px; font-size: 13.5px; line-height: 1.55; color: #4b5560; display: block; }
 .admin-help svg { vertical-align: -2px; color: #d99a00; }
+
+/* Bag button in the chat header: shown on phones, where the panel covers the page header. */
+.assistant-bag-btn { position: relative; display: none; }
+.assistant-bag-btn .cx-cart-count { position: absolute; top: 2px; right: 0; }
+@media (max-width: 1099px) { .assistant-bag-btn { display: grid; } }
