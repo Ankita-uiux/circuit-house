@@ -68,6 +68,11 @@ router.post("/shop/chat-sessions/:id/events", async (req, res): Promise<void> =>
   const body = (req.body ?? {}) as { type?: unknown; card?: unknown; label?: unknown };
   try {
     await ensureSession(id, req.get("user-agent"), undefined);
+    if (body.type === "inactivity") {
+      await logMessage(id, "assistant", "Are you still there?");
+      res.json({ ok: true });
+      return;
+    }
     if (body.type === "card" && typeof body.card === "string" && (TEST_CARDS as readonly string[]).includes(body.card)) {
       await logMessage(id, "card", body.card);
       res.json({ ok: true });

@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent, type Re
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, Headphones, Laptop, MapPin, Minus, Plus, Search, Send, ShieldCheck, ShoppingBag, ShoppingCart, Sparkles, X, MessageCircle, Smartphone, Tablet, Watch, Mouse, Camera, Gamepad2, Tv, ExternalLink, type LucideIcon } from 'lucide-react';
 import { searchCatalog } from '../../../lib/catalog-search';
+import { useChatInactivity } from './hooks/use-chat-inactivity';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { getListProductsQueryKey, useGetShoppingAssistantReply, useListProducts } from '@workspace/api-client-react';
 import type { Product, ShoppingAssistantTurn, ShoppingAssistantReply } from '@workspace/api-client-react';
@@ -113,7 +114,7 @@ function readFacilitatorMode() {
     return new URLSearchParams(window.location.search).get('facilitator') === '1';
   }
 }
-async function postSessionEvent(sessionId: string, event: { type: 'card'; card: string } | { type: 'participant'; label: string }) {
+async function postSessionEvent(sessionId: string, event: { type: 'card'; card: string } | { type: 'participant'; label: string } | { type: 'inactivity' }) {
   const response = await fetch(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/api/shop/chat-sessions/${encodeURIComponent(sessionId)}/events`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(event),
   });
@@ -338,6 +339,12 @@ function Home({
   const [queuedQuestion, setQueuedQuestion] = useState('');
   const [facilitator] = useState(readFacilitatorMode);
   const assistant = useGetShoppingAssistantReply({ request: { headers: { 'x-chat-session': sessionId } } });
+  useChatInactivity(assistantOpen && !!participantName, assistant.isPending || namePending, sessionId, messages.length, () => {
+    setMessages(current => [...current, { role: 'assistant', content: 'Are you still there?' }]);
+    void postSessionEvent(sessionId, { type: 'inactivity' }).catch(() => {
+      toast({ title: 'Reminder could not be saved', description: 'The inactivity reminder appeared here, but could not be saved to the chat log.' });
+    });
+  });
   const startNewSession = () => {
     if (assistant.isPending || namePending) return;
     const id = newSessionId();
