@@ -25,8 +25,22 @@ export function shoppingGreeting(name: string) {
   return `Nice to meet you, ${name}! Tell me what you’ll use it for and your budget.\n\nI’ll suggest a few options from our catalog and explain the trade-offs in plain words.`;
 }
 
-/** Atomic, idempotent onboarding. An existing session is never automatically renamed. */
-export async function startNamedSession(id: string, name: string, userAgent: string | undefined, settings: unknown) {
+export const NAME_REASK = "Got it, I’ll come back to that in a moment. First, what should I call you? Just your first name is fine.";
+export const NAME_RETRY = "Sorry, I didn’t catch your name. What should I call you? Just your first name is fine.";
+
+/** The greeting is saved once per session, before the participant's first reply. */
+async function ensureGreeting(client: { query: (text: string, values?: unknown[]) => Promise<{ rowCount: number | null }> }, id: string) {
+  const existing = await client.query(`SELECT 1 FROM chat_messages WHERE session_id = $1 LIMIT 1`, [id]);
+  if (!existing.rowCount) {
+    await client.query(`INSERT INTO chat_messages (session_id, role, content) VALUES ($1, 'assistant', $2)`, [id, NAME_GREETING]);
+  }
+}
+
+/**
+ * Atomic, idempotent onboarding. Saves the participant's reply as typed, the
+ * extracted first name, and the greeting. An existing named session is never renamed.
+ */
+export async function startNamedSession(id: string, name: string, rawReply: string, userAgent: string | undefined, settings: unknown) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -39,21 +53,75 @@ export async function startNamedSession(id: string, name: string, userAgent: str
       [id, name, JSON.stringify(settings), userAgent?.slice(0, 300) ?? null],
     );
     if (inserted.rowCount) {
+      await ensureGreeting(client, id);
       await client.query(
-        `INSERT INTO chat_messages (session_id, role, content) VALUES
-         ($1, 'assistant', $2), ($1, 'user', $3), ($1, 'assistant', $4)`,
-        [id, NAME_GREETING, name, shoppingGreeting(name)],
+        `INSERT INTO chat_messages (session_id, role, content) VALUES ($1, 'user', $2), ($1, 'assistant', $3)`,
+        [id, rawReply, shoppingGreeting(name)],
       );
     }
-    const result = await client.query(`SELECT participant_name AS "participantName" FROM chat_sessions WHERE id = $1`, [id]);
+    const result = await client.query(`SELECT participant_name AS "participantName", state FROM chat_sessions WHERE id = $1`, [id]);
     await client.query("COMMIT");
-    return { participantName: result.rows[0].participantName as string | null };
+    return { participantName: result.rows[0].participantName as string | null, state: result.rows[0].state as unknown };
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
   } finally {
     client.release();
   }
+}
+
+/** The reply to the name question had no name: save it, ask again, and keep any shopping request for later. */
+export async function logNameRetry(id: string, rawReply: string, reply: string, state: unknown, userAgent: string | undefined, settings: unknown) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `INSERT INTO chat_sessions (id, settings, user_agent, name_prompt_enabled, state) VALUES ($1, $2, $3, true, $4)
+       ON CONFLICT (id) DO UPDATE SET state = EXCLUDED.state, settings = COALESCE(chat_sessions.settings, EXCLUDED.settings)`,
+      [id, JSON.stringify(settings), userAgent?.slice(0, 300) ?? null, JSON.stringify(state)],
+    );
+    await ensureGreeting(client, id);
+    await client.query(`INSERT INTO chat_messages (session_id, role, content) VALUES ($1, 'user', $2), ($1, 'assistant', $3)`, [id, rawReply, reply]);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getSessionState(id: string): Promise<{ state: unknown; participantName: string | null } | null> {
+  const { rows } = await pool.query(`SELECT state, participant_name AS "participantName" FROM chat_sessions WHERE id = $1`, [id]);
+  return rows[0] ?? null;
+}
+
+export async function saveSessionState(id: string, state: unknown) {
+  await pool.query(`UPDATE chat_sessions SET state = $2 WHERE id = $1`, [id, JSON.stringify(state)]);
+}
+
+/** Shopper and assistant turns, as the chat UI and the model need them (reply text without research logs). */
+export async function getConversation(id: string) {
+  const session = await pool.query(
+    `SELECT participant_name AS "participantName", state, created_at AS "createdAt" FROM chat_sessions WHERE id = $1`,
+    [id],
+  );
+  if (!session.rows[0]) return null;
+  const messages = await pool.query(
+    `SELECT id, role, content, meta, created_at AS "createdAt" FROM chat_messages
+     WHERE session_id = $1 AND role IN ('user', 'assistant') ORDER BY id`,
+    [id],
+  );
+  return {
+    ...session.rows[0],
+    messages: messages.rows.map((row: { id: number; role: string; content: string; meta: Record<string, unknown> | null; createdAt: Date }) => ({
+      id: row.id,
+      role: row.role,
+      content: typeof row.meta?.display === "string" ? row.meta.display : row.content,
+      meta: row.meta ?? {},
+      createdAt: row.createdAt,
+    })),
+  };
 }
 
 export async function renameSession(id: string, title: string) {
@@ -92,12 +160,14 @@ export async function logMessage(
   content: string,
   productIds: string[] = [],
   latencyMs: number | null = null,
+  meta: Record<string, unknown> | null = null,
 ) {
   try {
-    await pool.query(
-      `INSERT INTO chat_messages (session_id, role, content, product_ids, latency_ms) VALUES ($1, $2, $3, $4, $5)`,
-      [sessionId, role, content.slice(0, 8000), productIds, latencyMs],
+    const { rows } = await pool.query(
+      `INSERT INTO chat_messages (session_id, role, content, product_ids, latency_ms, meta) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [sessionId, role, content.slice(0, 8000), productIds, latencyMs, meta === null ? null : JSON.stringify(meta)],
     );
+    return rows[0].id as number;
   } catch (error) {
     logger.warn({ error: String(error) }, "Chat log: could not save message");
     throw error;

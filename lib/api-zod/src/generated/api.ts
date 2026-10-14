@@ -48,6 +48,10 @@ export const getShoppingAssistantReplyBodyMessageMax = 1000;
 
 export const getShoppingAssistantReplyBodyHistoryMax = 12;
 
+export const getShoppingAssistantReplyBodyQuoteMax = 2000;
+
+export const getShoppingAssistantReplyBodyBagMax = 30;
+
 
 
 export const GetShoppingAssistantReplyBody = zod.object({
@@ -55,7 +59,19 @@ export const GetShoppingAssistantReplyBody = zod.object({
   "history": zod.array(zod.object({
   "role": zod.enum(['user', 'assistant']),
   "content": zod.string()
-})).max(getShoppingAssistantReplyBodyHistoryMax)
+})).max(getShoppingAssistantReplyBodyHistoryMax),
+  "quote": zod.string().max(getShoppingAssistantReplyBodyQuoteMax).optional().describe('An earlier assistant message the shopper is replying to, sent as context.'),
+  "deferred": zod.boolean().optional().describe('The message was already saved during the name step (a request sent before the name); answer it without saving it again.'),
+  "bag": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "quantity": zod.number().int(),
+  "price": zod.number()
+})).max(getShoppingAssistantReplyBodyBagMax).optional().describe('What is in the shopper\'s bag right now.'),
+  "preferences": zod.object({
+  "verbosity": zod.enum(['short', 'normal', 'detailed']).optional(),
+  "mode": zod.union([zod.literal('help-me-choose'),zod.literal('know-what-i-want'),zod.literal(null)]).nullish()
+}).optional().describe('Shopper-chosen chat settings, saved in the conversation state and passed to the model.')
 })
 
 export const GetShoppingAssistantReplyResponse = zod.object({
@@ -85,7 +101,8 @@ export const GetShoppingAssistantReplyResponse = zod.object({
   "title": zod.string(),
   "url": zod.string()
 }))
-}).optional()
+}).optional(),
+  "messageId": zod.number().int().nullish().describe('Saved message ID, used for feedback on this reply.')
 })
 
 

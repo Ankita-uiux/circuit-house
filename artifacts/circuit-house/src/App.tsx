@@ -1,11 +1,13 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, Headphones, Laptop, MapPin, Minus, Plus, Search, Send, ShieldCheck, ShoppingBag, ShoppingCart, Sparkles, X, MessageCircle, Smartphone, Tablet, Watch, Mouse, Camera, Gamepad2, Tv, ExternalLink, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, MapPin, Minus, Plus, Search, ShieldCheck, ShoppingBag, ShoppingCart, X, ExternalLink } from 'lucide-react';
 import { searchCatalog } from '../../../lib/catalog-search';
-import { useChatInactivity } from './hooks/use-chat-inactivity';
 import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
-import { getListProductsQueryKey, useGetShoppingAssistantReply, useListProducts } from '@workspace/api-client-react';
-import type { Product, ShoppingAssistantTurn, ShoppingAssistantReply } from '@workspace/api-client-react';
+import { getListProductsQueryKey, useListProducts } from '@workspace/api-client-react';
+import type { Product } from '@workspace/api-client-react';
+import { CATEGORY_ICONS, ProductVisual, formatPrice, type CartLine } from './shared';
+import { ChatProvider, useChat } from './chat/chat-context';
+import { AssistantLauncher, AssistantPanel } from './chat/AssistantPanel';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { useToast } from '@/hooks/use-toast';
 import { ChatArt, FestiveArt, LaptopArt, PhonesArt } from './banners';
@@ -16,8 +18,6 @@ import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient();
 
-type CartLine = { product: Product; quantity: number };
-type Message = { role: 'assistant' | 'user'; content: string; products?: Product[]; market?: ShoppingAssistantReply['market'] };
 
 function readCart(): CartLine[] {
   try {
@@ -54,6 +54,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <ChatProvider cart={cart}>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
           <RoutedErrorBoundary>
             <Switch>
@@ -69,11 +70,22 @@ function App() {
               <Route component={NotFound} />
             </Switch>
           </RoutedErrorBoundary>
+          <StoreChat onAdd={addToCart} />
         </WouterRouter>
+        </ChatProvider>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
   );
+}
+
+/** The chat lives outside the routes, so it stays open (same conversation) when the page changes. */
+function StoreChat({ onAdd }: { onAdd: (product: Product) => void }) {
+  const [location] = useLocation();
+  const { toast } = useToast();
+  if (location.startsWith('/admin')) return null;
+  const add = (product: Product) => { onAdd(product); toast({ title: 'Added to cart', description: product.name }); };
+  return <><AssistantLauncher /><AssistantPanel onAdd={add} /></>;
 }
 
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {
@@ -82,44 +94,6 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
 }
 
 const CATEGORY_ORDER = ['Phones', 'Laptops', 'Tablets', 'Cameras', 'Gaming', 'TVs', 'Audio', 'Wearables', 'Accessories'] as const;
-
-const GREETING: Message = { role: 'assistant', content: 'Hi! Before we get started, what should I call you? A first name or nickname is fine.' };
-
-/* ---------- Saved chat sessions (for user testing) ---------- */
-const SESSION_KEY = 'circuit-house-chat-session';
-const FACILITATOR_KEY = 'circuit-house-facilitator';
-export const TEST_CARDS = [
-  '01 Everything at once', '02 Change your mind', '03 Off-topic',
-  '04 Confused', '05 Wrong information', '06 Vague',
-  '07 Ask for a human', '08 Hinglish and typos', '09 Silence',
-] as const;
-
-function newSessionId() {
-  try { if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID(); } catch { /* fall through */ }
-  return `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
-}
-function readSessionId() {
-  // The transcript is held in memory, so a fresh page must start a fresh log too.
-  // Never reuse an ID copied by a duplicated tab or a previous participant.
-  return newSessionId();
-}
-/** Facilitator mode: open the store with ?facilitator=1 (and ?facilitator=0 to turn it off). */
-function readFacilitatorMode() {
-  try {
-    const flag = new URLSearchParams(window.location.search).get('facilitator');
-    if (flag === '1') sessionStorage.setItem(FACILITATOR_KEY, '1');
-    if (flag === '0') sessionStorage.removeItem(FACILITATOR_KEY);
-    return sessionStorage.getItem(FACILITATOR_KEY) === '1';
-  } catch {
-    return new URLSearchParams(window.location.search).get('facilitator') === '1';
-  }
-}
-async function postSessionEvent(sessionId: string, event: { type: 'card'; card: string } | { type: 'participant'; label: string } | { type: 'inactivity' }) {
-  const response = await fetch(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/api/shop/chat-sessions/${encodeURIComponent(sessionId)}/events`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(event),
-  });
-  if (!response.ok) throw new Error(`Event not saved (${response.status})`);
-}
 
 function Logo() {
   return (
@@ -327,35 +301,7 @@ function Home({
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('Everything');
   const [sort, setSort] = useState('recommended');
-  const [messages, setMessages] = useState<Message[]>([
-    GREETING,
-  ]);
-  const [prompt, setPrompt] = useState('');
-  const [assistantOpen, setAssistantOpen] = useState(false);
-  const [sessionId, setSessionId] = useState(readSessionId);
-  const [participantName, setParticipantName] = useState('');
-  const [namePending, setNamePending] = useState(false);
-  const [nameError, setNameError] = useState('');
-  const [queuedQuestion, setQueuedQuestion] = useState('');
-  const [facilitator] = useState(readFacilitatorMode);
-  const assistant = useGetShoppingAssistantReply({ request: { headers: { 'x-chat-session': sessionId } } });
-  useChatInactivity(assistantOpen && !!participantName, assistant.isPending || namePending, sessionId, messages.length, () => {
-    setMessages(current => [...current, { role: 'assistant', content: 'Are you still there?' }]);
-    void postSessionEvent(sessionId, { type: 'inactivity' }).catch(() => {
-      toast({ title: 'Reminder could not be saved', description: 'The inactivity reminder appeared here, but could not be saved to the chat log.' });
-    });
-  });
-  const startNewSession = () => {
-    if (assistant.isPending || namePending) return;
-    const id = newSessionId();
-    try { sessionStorage.setItem(SESSION_KEY, id); } catch { /* memory only */ }
-    setSessionId(id);
-    setMessages([GREETING]);
-    setParticipantName('');
-    setNameError('');
-    setPrompt('');
-    setQueuedQuestion('');
-  };
+  const chat = useChat();
   const catalogRef = useRef<HTMLElement>(null);
 
   const goToCatalog = () => catalogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -438,56 +384,13 @@ function Home({
       title: <>Not sure what to buy?<br />Ask Circuit.</>,
       text: 'Tell it what you’ll use it for and your budget. It suggests options from our catalog and explains the trade-offs.',
       chips: ['No upsell', 'Plain-language answers', 'Only products we stock'],
-      cta: 'Ask Circuit', action: () => setAssistantOpen(true),
+      cta: 'Ask Circuit', action: () => chat.setOpen(true),
       art: <ChatArt productName="MacBook Neo" price={fromText(neoPrice) || '₹69,900'} />,
     },
   ];
 
-  const sendPrompt = async (value = prompt) => {
-    const message = value.trim();
-    if (!message || assistant.isPending || namePending) return;
-    if (!participantName) {
-      if (message.length > 60 || /[\r\n\u0000-\u001f]/.test(message)) {
-        setNameError('Please enter a first name or nickname, up to 60 characters.');
-        return;
-      }
-      setNamePending(true);
-      setNameError('');
-      try {
-        const response = await fetch(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/api/shop/chat-sessions/${encodeURIComponent(sessionId)}/start`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: message }),
-        });
-        if (!response.ok) throw new Error('Name was not saved');
-        const saved = await response.json() as { name: string; reply: string };
-        setParticipantName(saved.name);
-        setMessages([GREETING, { role: 'user', content: saved.name }, { role: 'assistant', content: saved.reply }]);
-        setPrompt(queuedQuestion);
-        setQueuedQuestion('');
-      } catch {
-        setNameError('Your chat couldn’t be saved. Check your connection and send your name again.');
-      } finally {
-        setNamePending(false);
-      }
-      return;
-    }
-    const history: ShoppingAssistantTurn[] = messages
-      .slice(-12)
-      .map(({ role, content }) => ({ role, content }));
-    const nextMessages: Message[] = [...messages, { role: 'user', content: message }];
-    setMessages(nextMessages);
-    setPrompt('');
-    assistant.mutate({ data: { message, history } }, {
-      onSuccess: (reply) => setMessages((current) => [...current, { role: 'assistant', content: reply.reply, products: reply.products, market: reply.market }]),
-      onError: () => setMessages((current) => [...current, { role: 'assistant', content: 'I couldn’t complete that request. Your message or reply may not have been saved. Please check your connection and try again.' }]),
-    });
-  };
-
   const heading = search.trim() ? `Results for “${search.trim()}”` : category === 'Everything' ? 'All products' : category;
-  const askAboutSearch = () => {
-    setAssistantOpen(true);
-    if (participantName) void sendPrompt(search);
-    else setQueuedQuestion(search);
-  };
+  const askAboutSearch = () => chat.ask(search);
 
   return (
     <div className="cx-store">
@@ -552,281 +455,8 @@ function Home({
           )}
         </section>
       </main>
-      <SiteFooter onAsk={() => setAssistantOpen(true)} onCategory={showCategory} />
-      {!assistantOpen && (
-        <button type="button" className="assistant-fab" onClick={() => setAssistantOpen(true)} aria-label="Open the shopping assistant" data-testid="button-open-assistant">
-          <MessageCircle size={20} strokeWidth={2} />
-          <span>Ask Circuit</span>
-          {messages.length > 1 && <span className="assistant-fab-dot" aria-hidden="true" />}
-        </button>
-      )}
-      {assistantOpen && (
-        <AssistantPanel
-          messages={messages}
-          prompt={prompt}
-          setPrompt={setPrompt}
-          pending={assistant.isPending || namePending}
-          collectingName={!participantName}
-          nameError={nameError}
-          onSend={sendPrompt}
-          onAdd={add}
-          onClose={() => setAssistantOpen(false)}
-          facilitator={facilitator}
-          sessionId={sessionId}
-          onNewSession={startNewSession}
-        />
-      )}
+      <SiteFooter onAsk={() => chat.setOpen(true)} onCategory={showCategory} />
       {cartOpen && <CartDrawer cart={cart} changeQuantity={changeQuantity} onClose={() => setCartOpen(false)} />}
-    </div>
-  );
-}
-
-const SUGGESTIONS = ['Laptop for Figma under ₹80,000', 'Phone under ₹30,000', 'Earbuds with ANC under ₹5,000'];
-
-function FacilitatorBar({ sessionId, onNewSession }: { sessionId: string; onNewSession: () => void }) {
-  const [open, setOpen] = useState(true);
-  const [participant, setParticipant] = useState('');
-  const [savedParticipant, setSavedParticipant] = useState('');
-  const [given, setGiven] = useState<{ card: string; time: string }[]>([]);
-  const [status, setStatus] = useState<string>('');
-  const [confirmNew, setConfirmNew] = useState(false);
-
-  useEffect(() => { setGiven([]); setParticipant(''); setSavedParticipant(''); setStatus(''); }, [sessionId]);
-  useEffect(() => {
-    if (!confirmNew) return;
-    const timer = window.setTimeout(() => setConfirmNew(false), 4000);
-    return () => window.clearTimeout(timer);
-  }, [confirmNew]);
-
-  const saveParticipant = async (event: FormEvent) => {
-    event.preventDefault();
-    try {
-      await postSessionEvent(sessionId, { type: 'participant', label: participant.trim() });
-      setSavedParticipant(participant.trim());
-      setStatus(participant.trim() ? `Participant saved: ${participant.trim()}` : 'Participant cleared');
-    } catch {
-      setStatus('Couldn’t save the participant. Check the connection and try again.');
-    }
-  };
-  const giveCard = async (card: string) => {
-    try {
-      await postSessionEvent(sessionId, { type: 'card', card });
-      const time = new Intl.DateTimeFormat('en-IN', { hour: '2-digit', minute: '2-digit' }).format(new Date());
-      setGiven((current) => [...current, { card, time }]);
-      setStatus(`Logged card ${card} at ${time}`);
-    } catch {
-      setStatus('Couldn’t log that card. Check the connection and tap it again.');
-    }
-  };
-
-  return (
-    <section className={`facilitator-bar${open ? ' is-open' : ''}`} aria-label="Facilitator controls" data-testid="facilitator-bar">
-      <button type="button" className="facilitator-toggle" onClick={() => setOpen((value) => !value)} aria-expanded={open} data-testid="button-facilitator-toggle">
-        <span className="facilitator-flag">Facilitator</span>
-        <span>{savedParticipant || 'No participant'} · {given.length} {given.length === 1 ? 'card' : 'cards'}</span>
-        <ChevronRight size={14} className="facilitator-chevron" />
-      </button>
-      {open && (
-        <div className="facilitator-body">
-          <form className="facilitator-row" onSubmit={(event) => void saveParticipant(event)}>
-            <label htmlFor="facilitator-participant">Participant</label>
-            <input id="facilitator-participant" value={participant} onChange={(event) => setParticipant(event.target.value)} placeholder="e.g. P1" maxLength={60} data-testid="input-participant" />
-            <button type="submit" data-testid="button-save-participant">Save</button>
-          </form>
-          <div className="facilitator-cards" role="group" aria-label="Log a card">
-            {TEST_CARDS.map((card) => {
-              const count = given.filter((item) => item.card === card).length;
-              return (
-                <button type="button" key={card} className={count ? 'is-given' : ''} onClick={() => void giveCard(card)} data-testid={`button-card-${card.slice(0, 2)}`}>
-                  <b>{card.slice(0, 2)}</b>{card.slice(3)}{count > 1 && <em>×{count}</em>}
-                </button>
-              );
-            })}
-          </div>
-          <div className="facilitator-foot">
-            <span className="facilitator-status" role="status" data-testid="text-facilitator-status">{status || 'Tap a card when you hand it to the participant.'}</span>
-            <button type="button" className={`facilitator-new${confirmNew ? ' is-confirm' : ''}`} onClick={() => { if (confirmNew) { setConfirmNew(false); onNewSession(); } else setConfirmNew(true); }} data-testid="button-new-session">
-              {confirmNew ? 'Tap again to start' : 'New participant'}
-            </button>
-          </div>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function AssistantPanel({
-  messages, prompt, setPrompt, pending, onSend, onAdd, onClose, facilitator, sessionId, onNewSession, collectingName, nameError,
-}: {
-  messages: Message[];
-  prompt: string;
-  setPrompt: (value: string) => void;
-  pending: boolean;
-  collectingName: boolean;
-  nameError: string;
-  onSend: (value?: string) => void;
-  onAdd: (product: Product) => void;
-  onClose: () => void;
-  facilitator: boolean;
-  sessionId: string;
-  onNewSession: () => void;
-}) {
-  const listRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => { inputRef.current?.focus(); }, []);
-  useEffect(() => {
-    const list = listRef.current;
-    if (list) list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
-  }, [messages.length, pending]);
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  return (
-    <>
-      <div className="assistant-panel-scrim" onClick={onClose} aria-hidden="true" />
-      <aside className="assistant-panel" role="dialog" aria-labelledby="assistant-panel-title" data-testid="panel-assistant">
-        <header className="assistant-panel-top">
-          <div className="assistant-panel-mark" aria-hidden="true"><Sparkles size={15} /></div>
-          <div className="assistant-panel-titles">
-            <h2 id="assistant-panel-title">Ask Circuit</h2>
-            <p>Catalog picks and sourced market prices. No upsell.</p>
-          </div>
-          <button type="button" className="suggestion" onClick={onNewSession} disabled={pending} aria-label="Start a new chat">New chat</button>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Close the shopping assistant" data-testid="button-close-assistant"><X size={17} /></button>
-        </header>
-        {facilitator && <FacilitatorBar sessionId={sessionId} onNewSession={onNewSession} />}
-
-        <div className="assistant-panel-messages" ref={listRef} aria-live="polite" data-testid="assistant-conversation">
-          {messages.map((message, index) => (
-            <div key={`${index}-${message.role}`} className={`assistant-turn ${message.role}`}>
-              <div className={`assistant-message ${message.role}`} data-testid={`message-${message.role}-${index}`}>
-                {message.role === 'assistant' ? <FormattedReply text={message.content} sources={message.market?.sources} /> : message.content}
-                {message.market?.status === 'used' && <div className="assistant-market-sources">
-                  <small>Market sources · {message.market.checkedAt ? new Intl.DateTimeFormat('en-IN',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Kolkata'}).format(new Date(message.market.checkedAt)) : ''}</small>
-                  <ol>{message.market.sources.map((source,i) => <li key={source.url}><a href={source.url} target="_blank" rel="noopener noreferrer">[{i+1}] {source.title}</a></li>)}</ol>
-                  <small>Prices and offer eligibility can change at retailer checkout.</small>
-                </div>}
-                {message.market?.status === 'unavailable' && <small className="assistant-market-status">Market lookup unavailable · catalog prices are dated references.</small>}
-              </div>
-              {!!message.products?.length && (
-                <div className="assistant-picks">
-                  {message.products.map((product) => (
-                    <div key={product.id} className="assistant-pick">
-                      <div className="assistant-pick-thumb"><ProductVisual product={product} size="thumb" /></div>
-                      <div className="assistant-pick-info">
-                        <span className="assistant-pick-category">{product.origin === 'market' ? 'Web listing · ' : ''}{product.category}</span>
-                        <strong>{product.name}</strong>
-                        <span className="assistant-pick-price">{formatPrice(product.price)}</span>
-                        {product.origin === 'market' && <a className="assistant-retailer" href={product.priceSource.url} target="_blank" rel="noopener noreferrer">{product.priceSource.label} · checked {product.priceSource.asOf}</a>}
-                      </div>
-                      <button type="button" className="assistant-pick-add" onClick={() => onAdd(product)} data-testid={`assistant-match-${product.id}`}><Plus size={13} /> Add to bag</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-          {pending && (
-            <div className="assistant-turn assistant">
-              <div className="assistant-message assistant assistant-thinking" data-testid="status-assistant-thinking"><span /><span /><span /> {collectingName ? 'Starting your chat…' : 'Checking products and market sources…'}</div>
-            </div>
-          )}
-        </div>
-
-        <div className="assistant-panel-bottom">
-          {!collectingName && messages.length === 3 && (
-            <div className="assistant-suggestions">
-              {SUGGESTIONS.map((suggestion) => (
-                <button type="button" className="suggestion" key={suggestion} onClick={() => onSend(suggestion)} data-testid={`button-suggestion-${suggestion.toLowerCase().replaceAll(' ', '-')}`}>{suggestion}</button>
-              ))}
-            </div>
-          )}
-          <form className="assistant-input-row" onSubmit={(event) => { event.preventDefault(); onSend(); }}>
-            <textarea
-              ref={inputRef}
-              className="assistant-input"
-              rows={2}
-              value={prompt}
-              onChange={(event) => setPrompt(event.target.value)}
-              onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); onSend(); } }}
-              placeholder={collectingName ? 'Your first name or nickname…' : "Tell me what it's for and your budget…"}
-              maxLength={collectingName ? 60 : 1000}
-              aria-label={collectingName ? 'Your first name or nickname' : "Describe what you're shopping for"}
-              data-testid="input-assistant-prompt"
-            />
-            <button className="send-button" type="submit" disabled={!prompt.trim() || pending} aria-label="Send question" data-testid="button-send-prompt"><Send size={16} /></button>
-          </form>
-          {nameError && <p className="test-sessions-error" role="alert">{nameError}</p>}
-          <p className="assistant-footnote">Chats and your chosen name are saved for a class research study. A nickname is fine; please don’t share sensitive personal details.</p>
-        </div>
-      </aside>
-    </>
-  );
-}
-
-/** Renders the assistant's plain-text reply: paragraphs, "- " bullet lists, numbered lists and **bold**. */
-function FormattedReply({ text, sources = [] }: { text: string; sources?: Array<{title:string;url:string}> }) {
-  const inline = (value: string) => renderInline(value, sources);
-  const blocks = text.replace(/\r\n/g, '\n').split(/\n\s*\n/).map((block) => block.trim()).filter(Boolean);
-  return (
-    <>
-      {blocks.map((block, blockIndex) => {
-        const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
-        const bullet = /^[-•*]\s+/;
-        const numbered = /^\d+[.)]\s+/;
-        if (lines.every((line) => bullet.test(line))) {
-          return <ul key={blockIndex}>{lines.map((line, i) => <li key={i}>{inline(line.replace(bullet, ''))}</li>)}</ul>;
-        }
-        if (lines.every((line) => numbered.test(line))) {
-          return <ol key={blockIndex}>{lines.map((line, i) => <li key={i}>{inline(line.replace(numbered, ''))}</li>)}</ol>;
-        }
-        // A paragraph followed by bullets in the same block
-        const firstBullet = lines.findIndex((line) => bullet.test(line));
-        if (firstBullet > 0 && lines.slice(firstBullet).every((line) => bullet.test(line))) {
-          return (
-            <Fragment key={blockIndex}>
-              <p>{lines.slice(0, firstBullet).map((line, i) => <Fragment key={i}>{i > 0 && ' '}{inline(line)}</Fragment>)}</p>
-              <ul>{lines.slice(firstBullet).map((line, i) => <li key={i}>{inline(line.replace(bullet, ''))}</li>)}</ul>
-            </Fragment>
-          );
-        }
-        return <p key={blockIndex}>{lines.map((line, i) => <Fragment key={i}>{i > 0 && <br />}{inline(line)}</Fragment>)}</p>;
-      })}
-    </>
-  );
-}
-
-function renderInline(text: string, sources: Array<{title:string;url:string}> = []): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*|\[\d+\])/g).filter(Boolean).map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) return <strong key={i}>{part.slice(2,-2)}</strong>;
-    const source = /^\[\d+\]$/.test(part) ? sources[Number(part.slice(1,-1))-1] : undefined;
-    return source ? <a key={i} href={source.url} target="_blank" rel="noopener noreferrer" title={source.title} className="assistant-citation">{part}</a> : <Fragment key={i}>{part}</Fragment>;
-  });
-}
-
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  Cameras: Camera, Gaming: Gamepad2, TVs: Tv,
-  Phones: Smartphone, Laptops: Laptop, Tablets: Tablet, Audio: Headphones, Wearables: Watch, Accessories: Mouse,
-};
-
-/** Product photo when one is set; otherwise a tile with the brand and a category icon. */
-function ProductVisual({ product, size = 'card' }: { product: Product; size?: 'card' | 'thumb' }) {
-  const [failedImage, setFailedImage] = useState<string | null>(null);
-  if (product.image && product.image !== failedImage) {
-    const src = product.image.startsWith('/')
-      ? `${import.meta.env.BASE_URL}${product.image.slice(1)}`
-      : product.image;
-    return <img src={src} className={product.origin === 'market' ? 'market-packshot' : undefined} alt={product.name} width={800} height={800} loading="lazy" decoding="async" onError={() => setFailedImage(product.image)} data-testid={`img-product-${product.id}`} />;
-  }
-  const Icon = CATEGORY_ICONS[product.category] ?? ShoppingBag;
-  return (
-    <div className={`brand-tile brand-tile-${product.category.toLowerCase()} ${size === 'thumb' ? 'brand-tile-thumb' : ''}`} aria-hidden="true">
-      <Icon strokeWidth={1.25} />
-      {size === 'card' && <span>{product.brand}</span>}
     </div>
   );
 }
@@ -924,10 +554,6 @@ function Checkout({ cart, clearCart }: { cart: CartLine[]; clearCart: () => void
       <SiteFooter />
     </div>
   );
-}
-
-function formatPrice(value: number) {
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
 }
 
 export default App;

@@ -5,6 +5,8 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BagLine } from './bagLine';
+import type { ChatPreferences } from './chatPreferences';
 import type { ShoppingAssistantTurn } from './shoppingAssistantTurn';
 
 export interface ShoppingAssistantInput {
@@ -15,4 +17,17 @@ export interface ShoppingAssistantInput {
   message: string;
   /** @maxItems 12 */
   history: ShoppingAssistantTurn[];
+  /**
+     * An earlier assistant message the shopper is replying to, sent as context.
+     * @maxLength 2000
+     */
+  quote?: string;
+  /** The message was already saved during the name step (a request sent before the name); answer it without saving it again. */
+  deferred?: boolean;
+  /**
+     * What is in the shopper's bag right now.
+     * @maxItems 30
+     */
+  bag?: BagLine[];
+  preferences?: ChatPreferences;
 }

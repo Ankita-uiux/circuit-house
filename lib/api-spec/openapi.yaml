@@ -190,7 +190,44 @@ components:
           maxItems: 12
           items:
             $ref: "#/components/schemas/ShoppingAssistantTurn"
+        quote:
+          type: string
+          maxLength: 2000
+          description: An earlier assistant message the shopper is replying to, sent as context.
+        deferred:
+          type: boolean
+          description: The message was already saved during the name step (a request sent before the name); answer it without saving it again.
+        bag:
+          type: array
+          maxItems: 30
+          description: What is in the shopper's bag right now.
+          items:
+            $ref: "#/components/schemas/BagLine"
+        preferences:
+          $ref: "#/components/schemas/ChatPreferences"
       required: [message, history]
+    BagLine:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: number
+      required: [id, name, quantity, price]
+    ChatPreferences:
+      type: object
+      description: Shopper-chosen chat settings, saved in the conversation state and passed to the model.
+      properties:
+        verbosity:
+          type: string
+          enum: [short, normal, detailed]
+        mode:
+          type: ["string", "null"]
+          enum: [help-me-choose, know-what-i-want, null]
     ShoppingAssistantReply:
       type: object
       properties:
@@ -219,6 +256,9 @@ components:
                     type: string
                 required: [title, url]
           required: [status, checkedAt, sources]
+        messageId:
+          type: ["integer", "null"]
+          description: Saved message ID, used for feedback on this reply.
       required: [reply, products]
     AssistantBehaviorSettings:
       type: object

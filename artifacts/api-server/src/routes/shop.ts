@@ -11,11 +11,22 @@ import {
 } from "../lib/assistant-behavior";
 import { catalog } from "../data/catalog";
 import { withIcecatImage } from "../lib/icecat";
-import { ensureSession, logMessage, sessionIdFrom } from "../lib/chat-log";
+import { ensureSession, getConversation, logMessage, saveSessionState, sessionIdFrom } from "../lib/chat-log";
+import { normalizeState, updateConversationState, type StateUpdate } from "../lib/conversation-state";
 import { lookupMarket, type MarketResult } from '../lib/market-search';
 import { marketProductFromEvidence, marketProductPhoto, type MarketProduct } from '../lib/market-products';
 
 const router: IRouter = Router();
+
+/** Functional context for every turn. Persona, tone and wording rules live in the owner's settings prompt. */
+const CONVERSATION_STATE_RULES = `Conversation state:
+- conversationState is what is known so far in this conversation (category, budget_max, budget_stretch, use_case, brands_include, brands_exclude, must_haves, items_in_bag, last_discussed). It is already updated for the latest message; the newest value always wins over anything earlier in the chat.
+- Never ask again for something conversationState already has, unless the shopper seems unsure.
+- brands_exclude removes those brands only, never the whole category.
+- When the shopper says "cheaper", "other" or "another one", it refers to last_discussed (which may be an add-on such as a cable), not the main product. howTheLatestMessageWasRead explains how the latest message was understood; follow it.
+- items_in_bag is what the shopper has in their bag right now. You can refer to it, and avoid suggesting an item they already have.
+- quotedEarlierMessage, when present, is an earlier assistant message the shopper is replying to; answer in relation to it.
+- conversationState.verbosity is the shopper's chosen reply length (short, normal or detailed) and conversationState.mode is "help-me-choose" or "know-what-i-want" when chosen. Respect them.`;
 
 const products = catalog;
 
@@ -33,6 +44,7 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
   // Acknowledge a research turn only after it has been saved centrally.
   const sessionId = sessionIdFrom(req);
   const startedAt = Date.now();
+  let stored: Awaited<ReturnType<typeof getConversation>> = null;
   if (sessionId) {
     const snapshot = await getAssistantBehaviorSettings().then(
       ({ persona, tone, initiativeGoal, empathyExamples, empathyScale, goalOrientationScale }) =>
@@ -41,7 +53,10 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
     );
     try {
       await ensureSession(sessionId, req.get("user-agent"), snapshot);
-      await logMessage(sessionId, "user", parsed.data.message);
+      stored = await getConversation(sessionId);
+      if (!parsed.data.deferred) {
+        await logMessage(sessionId, "user", parsed.data.message, [], null, parsed.data.quote ? { quote: parsed.data.quote.slice(0, 2000) } : null);
+      }
     } catch {
       res.status(503).json({ error: "Your message could not be saved. Please try again." });
       return;
@@ -57,8 +72,30 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
 
   try {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const { message, history } = parsed.data;
+    const { message, quote } = parsed.data;
     const behaviorSettings = await getAssistantBehaviorSettings();
+    // Full saved history for this conversation (the client's short history is only a fallback).
+    const history: Array<{ role: "user" | "assistant"; content: string }> = stored
+      ? stored.messages.map(({ role, content }: { role: string; content: string }) => ({ role: role as "user" | "assistant", content })).slice(-40)
+      : parsed.data.history.map(({ role, content }) => ({ role, content }));
+    if (parsed.data.deferred && history.at(-1)?.role === "assistant") {
+      // The deferred request is already in the saved history; don't send it twice.
+      const index = history.map((turn) => turn.content).lastIndexOf(message);
+      if (index >= 0) history.splice(index, 1);
+    }
+    let state = normalizeState(stored?.state);
+    state.items_in_bag = (parsed.data.bag ?? []).map(({ id, name, quantity, price }) => ({ id, name, quantity, price }));
+    if (parsed.data.preferences?.verbosity) state.verbosity = parsed.data.preferences.verbosity;
+    if (parsed.data.preferences && parsed.data.preferences.mode !== undefined) state.mode = parsed.data.preferences.mode ?? null;
+    const lastAssistant = [...history].reverse().find((turn) => turn.role === "assistant")?.content ?? null;
+    let update: StateUpdate;
+    try {
+      update = await updateConversationState(openai, state, { message, lastAssistant, quote: quote ?? null });
+    } catch (error) {
+      req.log.warn({ error: String(error) }, "State update failed; keeping the previous state");
+      update = { state, intent: "shopping", interpretation: "" };
+    }
+    state = update.state;
     let market: MarketResult;
     try {
       market = await lookupMarket(openai, message, history, products.map(product => product.name));
@@ -116,13 +153,21 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
           role: "system",
           content: buildAssistantSystemPrompt(behaviorSettings),
         },
-        ...history.slice(-10).map((turn) => ({
+        { role: "system", content: CONVERSATION_STATE_RULES },
+        ...history.map((turn) => ({
           role: turn.role as "user" | "assistant",
           content: turn.content,
         })),
         {
           role: "user",
-          content: JSON.stringify({ latestMessage: message, localCatalog: catalogForModel, marketResearch: market }),
+          content: JSON.stringify({
+            latestMessage: message,
+            quotedEarlierMessage: quote ?? null,
+            conversationState: state,
+            howTheLatestMessageWasRead: update.interpretation || null,
+            localCatalog: catalogForModel,
+            marketResearch: market,
+          }),
         },
       ],
     });
@@ -150,16 +195,27 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
       typeof result.reply === "string" && result.reply.trim()
         ? result.reply.trim()
         : "Tell me a little more about what you're looking for, and I'll narrow down the catalog.";
+    state.last_discussed = {
+      category: replyProducts[0]?.category && replyProducts[0].category !== state.last_discussed.category ? (state.category ?? replyProducts[0].category) : state.last_discussed.category,
+      products: replyProducts.length ? replyProducts.map((product) => product.name) : state.last_discussed.products,
+    };
+    state = normalizeState(state);
+    let messageId: number | null = null;
     if (sessionId) {
+      await saveSessionState(sessionId, state).catch((error) => req.log.warn({ error: String(error) }, "Could not save conversation state"));
       const sourceLog = market.sources.length ? `\n\nMarket sources (checked ${market.checkedAt}):\n${market.sources.map((source,index) => `[${index+1}] ${source.title}: ${source.url}`).join('\n')}` : '';
       const externalLog = externalProducts.length ? `\n\nWeb listing snapshots:\n${JSON.stringify(externalProducts)}` : '';
-      await logMessage(sessionId, "assistant", replyText + sourceLog + externalLog, replyProducts.map((product) => product.id), Date.now() - startedAt);
+      const cards = replyProducts.map(withIcecatImage);
+      const marketForUi = { status: market.status, checkedAt: market.checkedAt, sources: market.sources };
+      messageId = await logMessage(sessionId, "assistant", replyText + sourceLog + externalLog, replyProducts.map((product) => product.id), Date.now() - startedAt,
+        { display: replyText, products: cards, market: marketForUi, intent: update.intent, interpretation: update.interpretation || undefined });
     }
     res.json(
       GetShoppingAssistantReplyResponse.parse({
         reply: replyText,
         products: replyProducts.map(withIcecatImage),
         market: { status: market.status, checkedAt: market.checkedAt, sources: market.sources },
+        messageId,
       }),
     );
   } catch (error) {

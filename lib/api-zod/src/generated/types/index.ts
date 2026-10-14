@@ -8,6 +8,10 @@
 
 export * from './assistantBehaviorSettings';
 export * from './assistantBehaviorSettingsUpdate';
+export * from './bagLine';
+export * from './chatPreferences';
+export * from './chatPreferencesMode';
+export * from './chatPreferencesVerbosity';
 export * from './healthStatus';
 export * from './priceSource';
 export * from './product';

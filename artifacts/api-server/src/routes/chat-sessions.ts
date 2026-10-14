@@ -14,28 +14,81 @@ import {
   startNamedSession,
   shoppingGreeting,
   renameSession,
+  getConversation,
+  getSessionState,
+  saveSessionState,
+  logNameRetry,
+  NAME_REASK,
+  NAME_RETRY,
 } from "../lib/chat-log";
+import { normalizeState } from "../lib/conversation-state";
+import { parseNameReply } from "../lib/participant-name";
 
 const router: IRouter = Router();
 
+/**
+ * The participant's reply to "what should I call you?". Only the first name is
+ * saved ("hi i am aryan" -> "Aryan"). If the reply is a shopping request instead,
+ * it is kept and returned as pendingRequest once the name arrives, so the shopper
+ * never has to repeat it.
+ */
 router.post("/shop/chat-sessions/:id/start", async (req, res): Promise<void> => {
   const { id } = req.params;
-  const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
-  if (!isSessionId(id) || !name || name.length > 60 || /[\r\n\u0000-\u001f]/.test(name)) {
-    res.status(400).json({ error: "Please enter a first name or nickname (up to 60 characters)." });
+  const raw = typeof req.body?.message === "string" ? req.body.message : typeof req.body?.name === "string" ? req.body.name : "";
+  const message = raw.replace(/[\u0000-\u001f]+/g, " ").trim();
+  if (!isSessionId(id) || !message || message.length > 1000) {
+    res.status(400).json({ error: "Please enter a first name or nickname." });
     return;
   }
   try {
     const settings = await getAssistantBehaviorSettings();
-    const session = await startNamedSession(id, name, req.get("user-agent"), settings);
+    const existing = await getSessionState(id);
+    const state = normalizeState(existing?.state);
+    if (existing?.participantName) {
+      res.json({ name: existing.participantName, reply: shoppingGreeting(existing.participantName), pendingRequest: null });
+      return;
+    }
+    const parsed = parseNameReply(message);
+    if (!parsed.name) {
+      const pending = parsed.request ?? state.pending_request;
+      const reply = parsed.request ? NAME_REASK : NAME_RETRY;
+      await logNameRetry(id, message, reply, { ...state, pending_request: pending }, req.get("user-agent"), settings);
+      res.json({ name: null, reply, pendingRequest: null });
+      return;
+    }
+    const session = await startNamedSession(id, parsed.name, message, req.get("user-agent"), settings);
     if (!session.participantName) {
       res.status(409).json({ error: "This is an older session. Start a new chat to use a name." });
       return;
     }
-    res.status(200).json({ name: session.participantName, reply: shoppingGreeting(session.participantName) });
+    const pendingRequest = parsed.request ?? normalizeState(session.state).pending_request;
+    if (pendingRequest) await saveSessionState(id, { ...normalizeState(session.state), pending_request: null });
+    res.status(200).json({ name: session.participantName, reply: shoppingGreeting(session.participantName), pendingRequest });
   } catch (error) {
     req.log.error({ error }, "Could not start named chat");
     res.status(503).json({ error: "Your chat could not be saved. Please try again." });
+  }
+});
+
+/** The saved conversation, so a refresh or reopened tab shows the same chat. Anyone with the random session ID can read it. */
+router.get("/shop/chat-sessions/:id/conversation", async (req, res): Promise<void> => {
+  const { id } = req.params;
+  if (!isSessionId(id)) {
+    res.status(400).json({ error: "Invalid session id." });
+    return;
+  }
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    const conversation = await getConversation(id);
+    if (!conversation) {
+      res.status(404).json({ error: "Conversation not found." });
+      return;
+    }
+    const state = normalizeState(conversation.state);
+    res.json({ participantName: conversation.participantName, preferences: { verbosity: state.verbosity, mode: state.mode }, messages: conversation.messages });
+  } catch (error) {
+    req.log.error({ error }, "Could not load conversation");
+    res.status(500).json({ error: "The conversation could not be loaded." });
   }
 });
 

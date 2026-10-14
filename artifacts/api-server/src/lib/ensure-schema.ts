@@ -45,6 +45,8 @@ export async function ensureSchema() {
     ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS title text;
     ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS participant_name text;
     ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS name_prompt_enabled boolean NOT NULL DEFAULT false;
+    ALTER TABLE chat_sessions ADD COLUMN IF NOT EXISTS state jsonb;
+    ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS meta jsonb;
     CREATE INDEX IF NOT EXISTS chat_sessions_created_idx ON chat_sessions (created_at DESC, id DESC);
     CREATE INDEX IF NOT EXISTS chat_messages_session_idx ON chat_messages (session_id, id);
   `);

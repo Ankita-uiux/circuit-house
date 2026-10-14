@@ -12,4 +12,9 @@ export interface ShoppingAssistantReply {
   reply: string;
   products: Product[];
   market?: ShoppingAssistantReplyMarket;
+  /**
+     * Saved message ID, used for feedback on this reply.
+     * @nullable
+     */
+  messageId?: number | null;
 }

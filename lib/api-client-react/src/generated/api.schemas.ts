@@ -66,6 +66,42 @@ export interface ShoppingAssistantTurn {
   content: string;
 }
 
+export interface BagLine {
+  id: string;
+  name: string;
+  quantity: number;
+  price: number;
+}
+
+export type ChatPreferencesVerbosity = typeof ChatPreferencesVerbosity[keyof typeof ChatPreferencesVerbosity];
+
+
+export const ChatPreferencesVerbosity = {
+  short: 'short',
+  normal: 'normal',
+  detailed: 'detailed',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ChatPreferencesMode = typeof ChatPreferencesMode[keyof typeof ChatPreferencesMode] | null;
+
+
+export const ChatPreferencesMode = {
+  'help-me-choose': 'help-me-choose',
+  'know-what-i-want': 'know-what-i-want',
+} as const;
+
+/**
+ * Shopper-chosen chat settings, saved in the conversation state and passed to the model.
+ */
+export interface ChatPreferences {
+  verbosity?: ChatPreferencesVerbosity;
+  /** @nullable */
+  mode?: ChatPreferencesMode;
+}
+
 export interface ShoppingAssistantInput {
   /**
      * @minLength 1
@@ -74,6 +110,19 @@ export interface ShoppingAssistantInput {
   message: string;
   /** @maxItems 12 */
   history: ShoppingAssistantTurn[];
+  /**
+     * An earlier assistant message the shopper is replying to, sent as context.
+     * @maxLength 2000
+     */
+  quote?: string;
+  /** The message was already saved during the name step (a request sent before the name); answer it without saving it again. */
+  deferred?: boolean;
+  /**
+     * What is in the shopper's bag right now.
+     * @maxItems 30
+     */
+  bag?: BagLine[];
+  preferences?: ChatPreferences;
 }
 
 export type ShoppingAssistantReplyMarketStatus = typeof ShoppingAssistantReplyMarketStatus[keyof typeof ShoppingAssistantReplyMarketStatus];
@@ -102,6 +151,11 @@ export interface ShoppingAssistantReply {
   reply: string;
   products: Product[];
   market?: ShoppingAssistantReplyMarket;
+  /**
+     * Saved message ID, used for feedback on this reply.
+     * @nullable
+     */
+  messageId?: number | null;
 }
 
 export interface AssistantBehaviorSettings {
