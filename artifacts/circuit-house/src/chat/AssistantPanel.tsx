@@ -39,7 +39,8 @@ export function AssistantPanel() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const nearBottom = useRef(true);
   const seen = useRef(messages.length);
-  const pinned = useRef<number | null>(null);
+  const [spacer, setSpacer] = useState<{ index: number; height: number } | null>(null);
+  const userScrolled = useRef(false);
   const [unread, setUnread] = useState<number | null>(null);
   const collectingName = !participantName;
   const cart = useCart();
@@ -101,6 +102,7 @@ export function AssistantPanel() {
   useLayoutEffect(() => {
     if (loading) return;
     seen.current = messages.length;
+    setSpacer(null);
     scrollToBottom('auto');
     // only when loading finishes or the session changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,48 +116,26 @@ export function AssistantPanel() {
     if (messages.length <= previous) return;
     const last = messages[messages.length - 1];
     if (last.role === 'user') {
-      pinned.current = null;
+      setSpacer(null);
       nearBottom.current = true;
+      userScrolled.current = false;
       setUnread(null);
-      requestAnimationFrame(() => scrollToBottom());
+      requestAnimationFrame(() => requestAnimationFrame(() => scrollToBottom('auto')));
       return;
     }
     const index = messages.length - 1;
-    if (nearBottom.current) { pinned.current = index; requestAnimationFrame(() => scrollToMessage(index)); }
-    else setUnread(index);
+    // Only a shopper who scrolled up by themselves (to read something) keeps their place.
+    if (!userScrolled.current || nearBottom.current) {
+      // Give the new reply at least a full screen of room, so its first line can sit at the top right
+      // away and the text then fills in below it without the chat scrolling.
+      setSpacer({ index, height: Math.max(0, (listRef.current?.clientHeight ?? 0) - 24) });
+      requestAnimationFrame(() => requestAnimationFrame(() => scrollToMessage(index)));
+    } else setUnread(index);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length]);
 
-  // While a new reply is being revealed (and its cards appear), keep its first line at the top of the
-  // chat area until the shopper scrolls by themselves.
-  useEffect(() => {
-    const list = listRef.current;
-    if (!list) return;
-    const keepPinned = () => {
-      const index = pinned.current;
-      if (index === null) return;
-      const element = list.querySelector<HTMLElement>(`[data-index="${index}"]`);
-      if (!element) return;
-      const target = Math.max(0, element.offsetTop - 12);
-      if (Math.abs(list.scrollTop - target) > 2) list.scrollTop = Math.min(target, list.scrollHeight - list.clientHeight);
-    };
-    const observer = new MutationObserver(keepPinned);
-    observer.observe(list, { childList: true, subtree: true, characterData: true });
-    const release = () => { pinned.current = null; };
-    list.addEventListener('wheel', release, { passive: true });
-    list.addEventListener('touchmove', release, { passive: true });
-    list.addEventListener('keydown', release);
-    list.addEventListener('pointerdown', release);
-    return () => {
-      list.removeEventListener('pointerdown', release);
-      observer.disconnect();
-      list.removeEventListener('wheel', release);
-      list.removeEventListener('touchmove', release);
-      list.removeEventListener('keydown', release);
-    };
-  }, []);
 
-  useEffect(() => { if (pending && nearBottom.current) requestAnimationFrame(() => scrollToBottom()); }, [pending]);
+  useEffect(() => { if (pending && !userScrolled.current) requestAnimationFrame(() => requestAnimationFrame(() => scrollToBottom('auto'))); }, [pending]);
 
   const onScroll = () => {
     const list = listRef.current;
@@ -195,12 +175,18 @@ export function AssistantPanel() {
         )}
         {facilitator && <FacilitatorBar sessionId={chat.sessionId} onNewSession={chat.newParticipant} />}
 
-        <div className="assistant-panel-messages" ref={listRef} onScroll={onScroll} aria-live="polite" data-testid="assistant-conversation">
+        <div
+          className="assistant-panel-messages" ref={listRef} onScroll={onScroll} aria-live="polite" data-testid="assistant-conversation"
+          onWheel={(event) => { if (event.deltaY < 0) userScrolled.current = true; }}
+          onTouchMove={() => { userScrolled.current = true; }}
+          onPointerDown={(event) => { if (event.target === event.currentTarget) userScrolled.current = true; }}
+          onKeyDown={(event) => { if (['PageUp', 'ArrowUp', 'Home'].includes(event.key)) userScrolled.current = true; }}
+        >
           {messages.map((message, index) => {
             const isLatest = index === lastAssistantIndex;
             const ready = !message.animate;
             return (
-              <div key={`${index}-${message.role}`} data-index={index} className={`assistant-turn ${message.role}`}>
+              <div key={`${index}-${message.role}`} data-index={index} className={`assistant-turn ${message.role}`} style={spacer?.index === index ? { minHeight: spacer.height } : undefined}>
                 {message.quote && <div className="assistant-quote-in-turn"><CornerUpLeft size={12} /> <span>{message.quote}</span></div>}
                 {message.kind === 'human' ? <HumanCard text={message.content} /> : (
                   <div className={`assistant-message ${message.role}`} data-testid={`message-${message.role}-${index}`}>
