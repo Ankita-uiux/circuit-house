@@ -91,6 +91,24 @@ function offTopicReply(state: ConversationState) {
   return `I can't help with that, but I can help you find ${state.category ? OFF_TOPIC_STEER[state.category] : "the right gadget for college"}.`;
 }
 
+/** A plain side-by-side table from catalog data, used if the model doesn't return one. */
+function basicComparison(products: StoreProduct[], state: ConversationState): Comparison {
+  const inr = (value: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
+  const ceiling = state.budget_stretch ?? state.budget_max;
+  const rows: Comparison["rows"] = [
+    { label: "Price", values: products.map((product) => ({ text: inr(product.price), meetsRequirement: ceiling !== null && product.price <= ceiling })) },
+    { label: "Brand", values: products.map((product) => ({ text: product.brand, meetsRequirement: false })) },
+  ];
+  const depth = Math.min(4, Math.max(...products.map((product) => product.specs.length)));
+  for (let i = 0; i < depth; i += 1) {
+    rows.push({ label: i === 0 ? "Key specs" : "", values: products.map((product) => ({ text: product.specs[i] ?? "—", meetsRequirement: false })) });
+  }
+  if (products.some((product) => product.rating)) {
+    rows.push({ label: "Rating", values: products.map((product) => ({ text: product.rating ? `${product.rating.toFixed(1)} ★${product.reviewCount ? ` (${product.reviewCount.toLocaleString("en-IN")})` : ""}` : "No ratings yet", meetsRequirement: false })) });
+  }
+  return { products: products.map(({ id, name, price }) => ({ id, name, price })), rows };
+}
+
 /** Which stage of the team's conversation flow we are in, and which slots are still missing. */
 function conversationStage(state: ConversationState) {
   const missing: string[] = [];
@@ -211,8 +229,15 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
     const flow = conversationStage(state);
     const allowedSession = isService ? [] : allowedProducts(state, sessionWebProducts);
 
+    // "Compare all" under three product cards: compare exactly those products.
+    const compareIds = (parsed.data.compareIds ?? []).filter((id, index, all) => all.indexOf(id) === index).slice(0, 3);
+    const compareProducts = compareIds
+      .map((id) => { const local = catalog.find((product) => product.id === id); return local ? storeProduct(local) : sessionWebProducts.find((product) => product.id === id); })
+      .filter((product): product is StoreProduct => !!product);
+    const isCompare = compareProducts.length >= 2;
+
     let market: MarketResult = noMarket;
-    if (!isService && update.intent === "shopping") {
+    if (!isService && !isCompare && update.intent === "shopping") {
       try {
         market = await lookupMarket(openai, message, history, catalog.map((product) => product.name));
       } catch (error) {
@@ -300,6 +325,9 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
             localCatalog: catalogForModel,
             sessionProducts: sessionForModel,
             marketResearch: market,
+            compareTheseProducts: isCompare
+              ? { instruction: "The shopper tapped Compare all. Fill comparison for exactly these products, in this order, with rows that matter for their use (Price, Processor/Chip, RAM, Storage, Display, Battery, Best for, etc.), bold (meetsRequirement) the values that meet their requirements, and write ONE line naming the best fit for their use and budget. Return no productIds.", products: compareProducts.map(({ id, name, brand, price, specs, description, rating, reviewCount }) => ({ id, name, brand, priceInr: price, specs, description, rating, reviewCount })) }
+              : null,
             storeServices,
           }),
         },
@@ -344,7 +372,7 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
       const merged = [...sessionWebProducts.filter((product) => !webAllowed.some((item) => item.id === product.id)), ...webAllowed];
       state.web_products = merged.slice(-20) as unknown as ConversationState["web_products"];
     }
-    const cards = (state.category ? [...recommended, ...webAllowed] : [])
+    const cards = (state.category && !isCompare ? [...recommended, ...webAllowed] : [])
       .filter((product, index, all) => all.findIndex((item) => item.id === product.id) === index)
       .slice(0, 3)
       .map((product, index) => ({
@@ -371,6 +399,20 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
         return values.length === ids.length ? [{ label: item.label.slice(0, 40), values }] : [];
       }).slice(0, 8);
       if (ids.length >= 2 && rows.length) comparison = { products: ids.map((id) => ({ id, name: known.get(id)!.name, price: known.get(id)!.price })), rows };
+    }
+    if (isCompare) {
+      const order = compareProducts.map((product) => product.id);
+      const sameProducts = comparison && comparison.products.length === order.length && comparison.products.every((product) => order.includes(product.id));
+      if (comparison && sameProducts) {
+        // Keep the columns in the order the cards were shown.
+        const indexOf = comparison.products.map((product) => product.id);
+        comparison = {
+          products: order.map((id) => comparison!.products[indexOf.indexOf(id)]),
+          rows: comparison.rows.map((row) => ({ ...row, values: order.map((id) => row.values[indexOf.indexOf(id)]) })),
+        };
+      } else {
+        comparison = basicComparison(compareProducts, state);
+      }
     }
     const cartAdd = typeof result.cartAddId === "string" && known.has(result.cartAddId) ? known.get(result.cartAddId)! : null;
 

@@ -78,6 +78,8 @@ export const getShoppingAssistantReplyBodyQuoteMax = 2000;
 
 export const getShoppingAssistantReplyBodyBagMax = 30;
 
+export const getShoppingAssistantReplyBodyCompareIdsMax = 3;
+
 
 
 export const GetShoppingAssistantReplyBody = zod.object({
@@ -98,7 +100,8 @@ export const GetShoppingAssistantReplyBody = zod.object({
   "verbosity": zod.enum(['short', 'normal', 'detailed']).optional(),
   "mode": zod.union([zod.literal('help-me-choose'),zod.literal('know-what-i-want'),zod.literal(null)]).nullish()
 }).optional().describe('Shopper-chosen chat settings, saved in the conversation state and passed to the model.'),
-  "requestHuman": zod.boolean().optional().describe('The shopper tapped "Talk to store expert".')
+  "requestHuman": zod.boolean().optional().describe('The shopper tapped "Talk to store expert".'),
+  "compareIds": zod.array(zod.string()).max(getShoppingAssistantReplyBodyCompareIdsMax).optional().describe('The shopper tapped "Compare all" under a reply with three products; these are their IDs.')
 })
 
 export const getShoppingAssistantReplyResponseSuggestionsMax = 6;

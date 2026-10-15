@@ -281,6 +281,12 @@ components:
         requestHuman:
           type: boolean
           description: The shopper tapped "Talk to store expert".
+        compareIds:
+          type: array
+          maxItems: 3
+          description: The shopper tapped "Compare all" under a reply with three products; these are their IDs.
+          items:
+            type: string
       required: [message, history]
     Comparison:
       type: object

@@ -50,7 +50,7 @@ function storageSet(key: string, value: string | null) {
   try { if (value === null) sessionStorage.removeItem(key); else sessionStorage.setItem(key, value); } catch { /* memory only */ }
 }
 
-type SendOptions = { quote?: string | null; deferred?: boolean; hidden?: boolean; requestHuman?: boolean };
+type SendOptions = { quote?: string | null; deferred?: boolean; hidden?: boolean; requestHuman?: boolean; compareIds?: string[] };
 
 type ChatContextValue = {
   sessionId: string;
@@ -169,6 +169,7 @@ export function ChatProvider({ cart, onCartAdd, children }: { cart: CartLine[]; 
         bag: cartRef.current.map(({ product, quantity }) => ({ id: product.id, name: product.name, quantity, price: product.price })),
         preferences,
         requestHuman: options.requestHuman || undefined,
+        compareIds: options.compareIds?.length ? options.compareIds : undefined,
       }, { headers: { 'x-chat-session': sessionId } });
       setMessages((current) => [...current, {
         id: reply.messageId ?? null, role: 'assistant', content: reply.reply, products: reply.products, market: reply.market, createdAt: new Date().toISOString(),

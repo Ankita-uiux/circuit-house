@@ -32,4 +32,9 @@ export interface ShoppingAssistantInput {
   preferences?: ChatPreferences;
   /** The shopper tapped "Talk to store expert". */
   requestHuman?: boolean;
+  /**
+     * The shopper tapped "Compare all" under a reply with three products; these are their IDs.
+     * @maxItems 3
+     */
+  compareIds?: string[];
 }

@@ -11,6 +11,7 @@ import { ComparisonTable, FeedbackBar, FeedbackModal, HumanCard, StarterPrompts,
 import { FormattedReply } from './FormattedReply';
 import { TEST_CARDS, postSessionEvent, readFacilitatorMode } from './session-events';
 
+const COMPARE_ALL = 'Compare all';
 const timeFormat = new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit' });
 
 /** Floating button that opens the chat. Hidden while the panel is open. */
@@ -217,7 +218,14 @@ export function AssistantPanel() {
                     <button type="button" className="assistant-reply-btn" onClick={() => replyTo(message)} aria-label="Reply to this message" data-testid={`button-reply-${index}`}><CornerUpLeft size={12} /> Reply</button>
                   )}
                 </div>
-                {isLatest && ready && !pending && message.suggestions && <TryAsking suggestions={message.suggestions} asQuestion={/\?\s*$/.test(message.content.trim())} onPick={pickOption} />}
+                {isLatest && ready && !pending && (() => {
+                  // After exactly three product picks, always offer "Compare all" first.
+                  const three = message.products?.length === 3 ? message.products.map((product) => product.id) : null;
+                  const others = (message.suggestions ?? []).filter((text) => !(three && /^compare( all)?( 3| three)?$/i.test(text.trim())));
+                  const chips = three ? [COMPARE_ALL, ...others] : others;
+                  if (!chips.length) return null;
+                  return <TryAsking suggestions={chips} asQuestion={!!three || /\?\s*$/.test(message.content.trim())} onPick={(text) => (three && text === COMPARE_ALL ? void send(COMPARE_ALL, { compareIds: three }) : pickOption(text))} />;
+                })()}
               </div>
             );
           })}
