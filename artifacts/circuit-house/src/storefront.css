@@ -181,9 +181,13 @@
 .cx-footer-base { max-width: var(--cx-max); margin: 0 auto; padding: 16px 24px 24px; border-top: 1px solid var(--cx-line); font-size: 12px; color: var(--cx-muted); }
 
 /* ---------- Floating copilot button + panel, restyled for this store ---------- */
-.assistant-fab { background: var(--cx-accent); color: var(--cx-accent-ink); font-family: var(--cx-font); font-size: 14px; font-weight: 800; padding: 14px 20px 14px 16px; box-shadow: 0 10px 28px #0f172a33, 0 0 0 4px #14c8a033; }
-.assistant-fab:hover { background: var(--cx-accent-hover); }
-.assistant-fab-dot { background: #04130f; }
+.assistant-fab { width: 64px; height: 64px; padding: 0; display: grid; place-items: center; border: 3px solid #fff; border-radius: 50%; background: var(--cx-accent); color: #fff; font-family: var(--cx-font); box-shadow: 0 8px 24px #087b6840, 0 2px 6px #22222214; }
+.assistant-fab:hover { background: var(--cx-accent-hover); transform: translateY(-3px); }
+.assistant-fab:focus-visible { outline: 3px solid var(--cx-accent-text); outline-offset: 4px; }
+.assistant-fab-label { position: absolute; bottom: calc(100% + 10px); right: -2px; padding: 7px 11px; border: 1px solid #dcebe6; border-radius: 10px; background: #fff; color: var(--cx-accent-text); box-shadow: 0 3px 12px #1230270d; white-space: nowrap; font-size: 12px; font-weight: 700; line-height: 1.2; }
+.assistant-fab-label::after { content: ''; position: absolute; right: 25px; bottom: -4px; width: 7px; height: 7px; background: #fff; border-right: 1px solid #dcebe6; border-bottom: 1px solid #dcebe6; transform: rotate(45deg); }
+.assistant-fab-dot { position: absolute; top: 0; right: 0; margin: 0; background: #14c8a0; border: 2px solid #fff; width: 11px; height: 11px; }
+@media (prefers-reduced-motion: reduce) { .assistant-fab { transition: none; } }
 .assistant-panel { background: #fff; border-left: 1px solid var(--cx-line); font-family: var(--cx-font); box-shadow: -18px 0 50px #0f172a2e; }
 .assistant-panel-top, .assistant-panel-bottom { background: #f5f6f6; border-color: #e5e7e7; }
 .assistant-panel-mark { background: var(--cx-accent); color: var(--cx-accent-ink); }

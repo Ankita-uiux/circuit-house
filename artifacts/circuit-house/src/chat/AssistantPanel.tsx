@@ -20,8 +20,8 @@ export function AssistantLauncher() {
   if (open) return null;
   return (
     <button type="button" className="assistant-fab" onClick={() => setOpen(true)} aria-label="Open the shopping assistant" data-testid="button-open-assistant">
-      <MessageCircle size={20} strokeWidth={2} />
-      <span>Ask Circuit</span>
+      <span className="assistant-fab-label">Ask Circuit</span>
+      <MessageCircle size={30} strokeWidth={1.8} aria-hidden="true" />
       {messages.length > 1 && <span className="assistant-fab-dot" aria-hidden="true" />}
     </button>
   );
