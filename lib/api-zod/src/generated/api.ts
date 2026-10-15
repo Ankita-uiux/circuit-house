@@ -240,6 +240,8 @@ export const getAssistantBehaviorSettingsResponseEmpathyExamplesItemMax = 500;
 export const getAssistantBehaviorSettingsResponseEmpathyExamplesMin = 5;
 export const getAssistantBehaviorSettingsResponseEmpathyExamplesMax = 5;
 
+export const getAssistantBehaviorSettingsResponseTeamPromptMax = 40000;
+
 export const getAssistantBehaviorSettingsResponseEmpathyScaleMin = 0;
 export const getAssistantBehaviorSettingsResponseEmpathyScaleMax = 10;
 
@@ -253,6 +255,8 @@ export const GetAssistantBehaviorSettingsResponse = zod.object({
   "tone": zod.string().max(getAssistantBehaviorSettingsResponseToneMax),
   "initiativeGoal": zod.string().max(getAssistantBehaviorSettingsResponseInitiativeGoalMax),
   "empathyExamples": zod.array(zod.string().max(getAssistantBehaviorSettingsResponseEmpathyExamplesItemMax)).min(getAssistantBehaviorSettingsResponseEmpathyExamplesMin).max(getAssistantBehaviorSettingsResponseEmpathyExamplesMax),
+  "teamPrompt": zod.string().max(getAssistantBehaviorSettingsResponseTeamPromptMax).describe('The live team prompt (the default when nothing has been pasted).'),
+  "teamPromptDefault": zod.string().describe('The built-in team prompt, for "Reset to default".'),
   "empathyScale": zod.number().int().min(getAssistantBehaviorSettingsResponseEmpathyScaleMin).max(getAssistantBehaviorSettingsResponseEmpathyScaleMax),
   "goalOrientationScale": zod.number().int().min(getAssistantBehaviorSettingsResponseGoalOrientationScaleMin).max(getAssistantBehaviorSettingsResponseGoalOrientationScaleMax),
   "updatedAt": zod.coerce.date()
@@ -273,6 +277,8 @@ export const updateAssistantBehaviorSettingsBodyEmpathyExamplesItemMax = 500;
 export const updateAssistantBehaviorSettingsBodyEmpathyExamplesMin = 5;
 export const updateAssistantBehaviorSettingsBodyEmpathyExamplesMax = 5;
 
+export const updateAssistantBehaviorSettingsBodyTeamPromptMax = 40000;
+
 export const updateAssistantBehaviorSettingsBodyEmpathyScaleMin = 0;
 export const updateAssistantBehaviorSettingsBodyEmpathyScaleMax = 10;
 
@@ -286,6 +292,7 @@ export const UpdateAssistantBehaviorSettingsBody = zod.object({
   "tone": zod.string().min(1).max(updateAssistantBehaviorSettingsBodyToneMax),
   "initiativeGoal": zod.string().min(1).max(updateAssistantBehaviorSettingsBodyInitiativeGoalMax),
   "empathyExamples": zod.array(zod.string().min(1).max(updateAssistantBehaviorSettingsBodyEmpathyExamplesItemMax)).min(updateAssistantBehaviorSettingsBodyEmpathyExamplesMin).max(updateAssistantBehaviorSettingsBodyEmpathyExamplesMax),
+  "teamPrompt": zod.string().min(1).max(updateAssistantBehaviorSettingsBodyTeamPromptMax),
   "empathyScale": zod.number().int().min(updateAssistantBehaviorSettingsBodyEmpathyScaleMin).max(updateAssistantBehaviorSettingsBodyEmpathyScaleMax),
   "goalOrientationScale": zod.number().int().min(updateAssistantBehaviorSettingsBodyGoalOrientationScaleMin).max(updateAssistantBehaviorSettingsBodyGoalOrientationScaleMax)
 })
@@ -301,6 +308,8 @@ export const updateAssistantBehaviorSettingsResponseEmpathyExamplesItemMax = 500
 export const updateAssistantBehaviorSettingsResponseEmpathyExamplesMin = 5;
 export const updateAssistantBehaviorSettingsResponseEmpathyExamplesMax = 5;
 
+export const updateAssistantBehaviorSettingsResponseTeamPromptMax = 40000;
+
 export const updateAssistantBehaviorSettingsResponseEmpathyScaleMin = 0;
 export const updateAssistantBehaviorSettingsResponseEmpathyScaleMax = 10;
 
@@ -314,6 +323,8 @@ export const UpdateAssistantBehaviorSettingsResponse = zod.object({
   "tone": zod.string().max(updateAssistantBehaviorSettingsResponseToneMax),
   "initiativeGoal": zod.string().max(updateAssistantBehaviorSettingsResponseInitiativeGoalMax),
   "empathyExamples": zod.array(zod.string().max(updateAssistantBehaviorSettingsResponseEmpathyExamplesItemMax)).min(updateAssistantBehaviorSettingsResponseEmpathyExamplesMin).max(updateAssistantBehaviorSettingsResponseEmpathyExamplesMax),
+  "teamPrompt": zod.string().max(updateAssistantBehaviorSettingsResponseTeamPromptMax).describe('The live team prompt (the default when nothing has been pasted).'),
+  "teamPromptDefault": zod.string().describe('The built-in team prompt, for "Reset to default".'),
   "empathyScale": zod.number().int().min(updateAssistantBehaviorSettingsResponseEmpathyScaleMin).max(updateAssistantBehaviorSettingsResponseEmpathyScaleMax),
   "goalOrientationScale": zod.number().int().min(updateAssistantBehaviorSettingsResponseGoalOrientationScaleMin).max(updateAssistantBehaviorSettingsResponseGoalOrientationScaleMax),
   "updatedAt": zod.coerce.date()

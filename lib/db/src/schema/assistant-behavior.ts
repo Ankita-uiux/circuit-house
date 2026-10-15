@@ -24,6 +24,8 @@ export const assistantBehaviorSettingsTable = pgTable(
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
+    // The team's prompt as pasted in /admin. Empty means "use the built-in default".
+    teamPrompt: text("team_prompt").notNull().default(""),
     empathyScale: integer("empathy_scale").notNull(),
     goalOrientationScale: integer("goal_orientation_scale").notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })

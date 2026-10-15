@@ -42,6 +42,7 @@ function toFormValues(data: SettingsForm): SettingsForm {
     tone: data.tone,
     initiativeGoal: data.initiativeGoal,
     empathyExamples: [...data.empathyExamples],
+    teamPrompt: data.teamPrompt,
     empathyScale: data.empathyScale,
     goalOrientationScale: data.goalOrientationScale,
   };
@@ -52,6 +53,7 @@ const defaults: SettingsForm = {
   tone: '',
   initiativeGoal: '',
   empathyExamples: ['', '', '', '', ''],
+  teamPrompt: '',
   empathyScale: 5,
   goalOrientationScale: 5,
 };
@@ -253,14 +255,46 @@ function AdminSettings({ password, passwordRequired, onLocked }: { password: str
               <section className="admin-panel" aria-labelledby="voice-title">
                 <div className="admin-panel-head">
                   <div className="admin-panel-number">01</div>
-                  <div><div className="admin-section-kicker">The words and the why</div><h2 id="voice-title">Voice &amp; point of view</h2></div>
-                  <span className="admin-panel-index">VOICE</span>
+                  <div><div className="admin-section-kicker">Role, rules and conversation flow</div><h2 id="voice-title">Team prompt</h2></div>
+                  <span className="admin-panel-index">PROMPT</span>
                 </div>
-                <div className="admin-fields">
-                  <p className="admin-help" data-testid="text-team-prompt">
-                    The assistant’s role, scope, rules and 4-stage conversation flow now come from the team prompt (in <code>artifacts/api-server/src/lib/assistant-behavior.ts</code>), so they are the same for every test. Use the empathy and initiative settings below to tune how it sounds for each round of testing.
-                  </p>
-                </div>
+                <FormField
+                  control={form.control}
+                  name="teamPrompt"
+                  rules={{
+                    validate: (value) => value.trim().length > 0 || 'The team prompt can’t be empty. Use Reset to default to start again.',
+                    maxLength: { value: 40000, message: 'Keep the prompt under 40,000 characters.' },
+                  }}
+                  render={({ field, fieldState }) => {
+                    const isDefault = field.value.trim() === (settingsQuery.data?.teamPromptDefault ?? '').trim();
+                    return (
+                      <FormItem className="team-prompt">
+                        <div className="team-prompt-bar">
+                          <FormLabel className="admin-field-label">Paste or edit the prompt</FormLabel>
+                          <span className={`team-prompt-status${isDefault ? '' : ' is-custom'}`} data-testid="text-team-prompt-status">{isDefault ? 'Built-in default' : 'Custom'}</span>
+                        </div>
+                        <p className="admin-help" data-testid="text-team-prompt">
+                          Paste your team’s latest prompt here and press <b>Save changes</b>. It applies to the next message in every chat, and each test session records the version it used. You don’t need to describe cards, option chips, the comparison table or add-to-cart: the app adds those technical rules after this text automatically. The empathy and initiative settings below are added too.
+                        </p>
+                        <FormControl>
+                          <textarea {...field} className="admin-textarea team-prompt-input" spellCheck={false} rows={22} aria-invalid={!!fieldState.error} data-testid="input-team-prompt" />
+                        </FormControl>
+                        <div className="team-prompt-foot">
+                          <span className={fieldState.error ? 'team-prompt-error' : ''} role={fieldState.error ? 'alert' : undefined}>{fieldState.error?.message ?? `${field.value.length.toLocaleString('en-IN')} characters`}</span>
+                          <button
+                            type="button"
+                            className="admin-retry"
+                            disabled={isDefault}
+                            onClick={() => form.setValue('teamPrompt', settingsQuery.data?.teamPromptDefault ?? '', { shouldDirty: true, shouldValidate: true })}
+                            data-testid="button-reset-team-prompt"
+                          >
+                            <RotateCcw size={14} /> Reset to default
+                          </button>
+                        </div>
+                      </FormItem>
+                    );
+                  }}
+                />
               </section>
 
               <section className="admin-panel admin-slider-panel" aria-labelledby="approach-title">

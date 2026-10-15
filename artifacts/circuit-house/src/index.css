@@ -317,6 +317,14 @@
 .admin-char-count { color:#a0a092;font:9px var(--app-font-mono); }
 .admin-textarea { display:block;width:100%;min-height:118px;resize:vertical;border:1px solid #ddd9cd;border-radius:0;background:#f8f6ef;color:#304d41;padding:13px 14px;outline:none;font:11px/1.7 var(--app-font-sans);transition:border-color .16s,background .16s; }
 .admin-textarea-short { min-height:118px; }
+.team-prompt { display:grid;gap:10px;padding:22px 25px 22px; }
+.team-prompt-bar { display:flex;align-items:center;justify-content:space-between;gap:12px; }
+.team-prompt-status { padding:3px 9px;border:1px solid #ddd9cd;color:#5f6b63;font:600 11px var(--app-font-sans); }
+.team-prompt-status.is-custom { border-color:#5d907a;color:#2f5f4c;background:#eef5f0; }
+.team-prompt-input.admin-textarea { min-height:420px;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap; }
+.team-prompt-foot { display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;color:#6b7068; }
+.team-prompt-error { color:#b42318;font-weight:600; }
+@media (max-width: 720px) { .team-prompt { padding:18px 15px; } .team-prompt-input.admin-textarea { min-height:320px; } }
 .admin-textarea::placeholder { color:#a2a497; }
 .admin-textarea:focus { border-color:#5d907a;background:#fdfbf5;box-shadow:0 0 0 2px #3c745f13; }
 .admin-field-foot { min-height:27px;padding-top:7px;color:#8b9184;font-size:9px;line-height:1.5; }

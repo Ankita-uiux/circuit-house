@@ -37,7 +37,12 @@ router.put("/shop/assistant/settings", requireAdmin, async (req, res): Promise<v
     tone: parsed.data.tone.trim(),
     initiativeGoal: parsed.data.initiativeGoal.trim(),
     empathyExamples: parsed.data.empathyExamples.map((example) => example.trim()),
+    teamPrompt: parsed.data.teamPrompt.trim(),
   };
+  if (!settings.teamPrompt) {
+    res.status(400).json({ error: "The team prompt cannot be blank. Use Reset to default to start again." });
+    return;
+  }
   if (!settings.persona || !settings.tone || !settings.initiativeGoal) {
     res.status(400).json({ error: "Persona, tone, and conversation goal cannot be blank." });
     return;

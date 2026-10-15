@@ -9,6 +9,8 @@ export type AssistantBehaviorSettingsInput = {
   tone: string;
   initiativeGoal: string;
   empathyExamples: string[];
+  /** The team prompt from /admin; empty means the built-in TEAM_PROMPT. */
+  teamPrompt: string;
   empathyScale: number;
   goalOrientationScale: number;
 };
@@ -46,15 +48,22 @@ export const DEFAULT_ASSISTANT_BEHAVIOR_SETTINGS: AssistantBehaviorSettingsInput
   initiativeGoal:
     "Help each shopper identify the best-fitting product from the catalog for their needs, budget, and priorities.",
   empathyExamples: DEFAULT_EMPATHY_EXAMPLES,
+  teamPrompt: "",
   empathyScale: 6,
   goalOrientationScale: 7,
 };
 
-/** Rows saved before empathy examples existed have an empty array; fill in defaults. */
-function withEmpathyExamples<T extends { empathyExamples: string[] }>(row: T): T {
-  return row.empathyExamples.length === EMPATHY_STAGES.length
-    ? row
-    : { ...row, empathyExamples: DEFAULT_EMPATHY_EXAMPLES };
+/**
+ * Fills in defaults for older rows: empathy examples, and the team prompt
+ * (an empty saved prompt means "use the built-in one").
+ */
+function withEmpathyExamples<T extends { empathyExamples: string[]; teamPrompt: string }>(row: T): T & { teamPromptDefault: string } {
+  return {
+    ...row,
+    empathyExamples: row.empathyExamples.length === EMPATHY_STAGES.length ? row.empathyExamples : DEFAULT_EMPATHY_EXAMPLES,
+    teamPrompt: row.teamPrompt.trim() || TEAM_PROMPT,
+    teamPromptDefault: TEAM_PROMPT,
+  };
 }
 
 export async function getAssistantBehaviorSettings() {
@@ -87,12 +96,14 @@ export async function getAssistantBehaviorSettings() {
 export async function saveAssistantBehaviorSettings(
   settings: AssistantBehaviorSettingsInput,
 ) {
+  // Saving the unchanged default stores "", so later improvements to the default still apply.
+  const row = { ...settings, teamPrompt: settings.teamPrompt.trim() === TEAM_PROMPT.trim() ? "" : settings.teamPrompt.trim() };
   const [saved] = await db
     .insert(assistantBehaviorSettingsTable)
-    .values({ id: 1, ...settings })
+    .values({ id: 1, ...row })
     .onConflictDoUpdate({
       target: assistantBehaviorSettingsTable.id,
-      set: { ...settings, updatedAt: new Date() },
+      set: { ...row, updatedAt: new Date() },
     })
     .returning();
 
@@ -100,7 +111,7 @@ export async function saveAssistantBehaviorSettings(
     throw new Error("Could not save assistant behavior settings.");
   }
 
-  return saved;
+  return withEmpathyExamples(saved);
 }
 
 function formatEmpathyExamples(settings: AssistantBehaviorSettingsInput) {
@@ -114,8 +125,8 @@ function formatEmpathyExamples(settings: AssistantBehaviorSettingsInput) {
 
 /**
  * The team's assistant prompt (role, scope, autonomy, accuracy, honesty, privacy,
- * style and the 4-stage conversation flow). It is fixed in code; the admin page
- * only tunes empathy and initiative on top of it.
+ * style and the 4-stage conversation flow). This is only the DEFAULT: the team
+ * pastes and edits the live version in /admin ("Team prompt").
  * Adjusted for this prototype: products found on the web are sold by Circuit House
  * too, and the chat UI shows product cards, option chips and a comparison table.
  */
@@ -244,10 +255,28 @@ RESPONSE RULES (all stages)
 - If the user says bye or thanks, reply with one short goodbye. No pitch.
 - Format: short paragraphs; "- " for bullet points; product names in **double asterisks**; prices in Indian rupees with Indian digit grouping (₹69,900, ₹1,19,900), never dollars. No headings, markdown tables, links or source citations.`;
 
+/**
+ * Fixed technical rules added after whatever team prompt is pasted in /admin, so
+ * product cards, option chips, the comparison table and add-to-cart keep working
+ * even if a pasted prompt doesn't mention them.
+ */
+export const APP_RULES = `HOW THIS APP WORKS (fixed technical rules; always follow them, even if the prompt above says something different about formats or fields)
+- Your name is Circuit, the Circuit House shopping buddy. The app has already greeted the shopper and asked their name.
+- Data you get: localCatalog (Circuit House products, already filtered by category, budget and brand), sessionProducts (products found earlier in this chat), marketResearch (products found on the web, which Circuit House also sells: present them as ours, at the researched price), storeServices (delivery, orders, returns, exchange and policies). Use only this data for products, prices and policies. Never name other stores, and never include links or source citations.
+- conversationStage (1-4) and missingSlots tell you where the shopper is in the conversation.
+- reply: the chat text. Short paragraphs, "- " for bullet points, product names in **double asterisks**, prices in rupees with Indian digit grouping (₹69,900). No headings or markdown tables: the app draws cards and tables itself.
+- productIds: up to 3 products to show as cards, best fit first (externalProducts for products from marketResearch). Leave empty when you aren't recommending products.
+- productNotes: one per card: "why" (one sentence tied to their use and budget) and "headsUp" (only when it misses one of their requirements, otherwise null).
+- options: up to 6 short tappable replies. When you ask a question, the options are its likely answers.
+- comparison: fill it only when the shopper asks to compare; one value per product, in order; meetsRequirement true for values that meet their needs.
+- cartAddId: set it only after a clear yes to adding one specific product.`;
+
 export function buildAssistantSystemPrompt(
   settings: AssistantBehaviorSettingsInput,
 ) {
-  return `${TEAM_PROMPT}
+  return `${settings.teamPrompt.trim() || TEAM_PROMPT}
+
+${APP_RULES}
 
 EMPATHY (tuned by the research team for this test)
 Empathy scale: ${settings.empathyScale}/10. At 0, stay strictly practical with minimal emotional language. At 5, acknowledge feelings when shoppers clearly express them. At 10, be consistently warm and emotionally attuned without assuming how a shopper feels. Use the selected level between these endpoints, within the word limit above.

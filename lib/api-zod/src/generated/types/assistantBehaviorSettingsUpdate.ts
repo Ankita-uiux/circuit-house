@@ -30,6 +30,11 @@ export interface AssistantBehaviorSettingsUpdate {
      */
   empathyExamples: string[];
   /**
+     * @minLength 1
+     * @maxLength 40000
+     */
+  teamPrompt: string;
+  /**
      * @minimum 0
      * @maximum 10
      */

@@ -414,6 +414,13 @@ components:
           items:
             type: string
             maxLength: 500
+        teamPrompt:
+          type: string
+          maxLength: 40000
+          description: The live team prompt (the default when nothing has been pasted).
+        teamPromptDefault:
+          type: string
+          description: The built-in team prompt, for "Reset to default".
         empathyScale:
           type: integer
           minimum: 0
@@ -425,7 +432,7 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required: [persona, tone, initiativeGoal, empathyExamples, empathyScale, goalOrientationScale, updatedAt]
+      required: [persona, tone, initiativeGoal, empathyExamples, teamPrompt, teamPromptDefault, empathyScale, goalOrientationScale, updatedAt]
     AssistantBehaviorSettingsUpdate:
       type: object
       properties:
@@ -449,6 +456,10 @@ components:
             type: string
             minLength: 1
             maxLength: 500
+        teamPrompt:
+          type: string
+          minLength: 1
+          maxLength: 40000
         empathyScale:
           type: integer
           minimum: 0
@@ -457,7 +468,7 @@ components:
           type: integer
           minimum: 0
           maximum: 10
-      required: [persona, tone, initiativeGoal, empathyExamples, empathyScale, goalOrientationScale]
+      required: [persona, tone, initiativeGoal, empathyExamples, teamPrompt, empathyScale, goalOrientationScale]
     ShoppingAssistantError:
       type: object
       properties:

@@ -25,6 +25,8 @@ export async function ensureSchema() {
       ADD COLUMN IF NOT EXISTS initiative_goal text NOT NULL DEFAULT '${DEFAULT_GOAL}';
     ALTER TABLE assistant_behavior_settings
       ADD COLUMN IF NOT EXISTS empathy_examples text[] NOT NULL DEFAULT '{}'::text[];
+    ALTER TABLE assistant_behavior_settings
+      ADD COLUMN IF NOT EXISTS team_prompt text NOT NULL DEFAULT '';
 
     CREATE TABLE IF NOT EXISTS chat_sessions (
       id text PRIMARY KEY,

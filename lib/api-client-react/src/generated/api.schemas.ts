@@ -289,6 +289,13 @@ export interface AssistantBehaviorSettings {
      */
   empathyExamples: string[];
   /**
+     * The live team prompt (the default when nothing has been pasted).
+     * @maxLength 40000
+     */
+  teamPrompt: string;
+  /** The built-in team prompt, for "Reset to default". */
+  teamPromptDefault: string;
+  /**
      * @minimum 0
      * @maximum 10
      */
@@ -324,6 +331,11 @@ export interface AssistantBehaviorSettingsUpdate {
      * @items.maxLength 500
      */
   empathyExamples: string[];
+  /**
+     * @minLength 1
+     * @maxLength 40000
+     */
+  teamPrompt: string;
   /**
      * @minimum 0
      * @maximum 10
