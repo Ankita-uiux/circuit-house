@@ -43,6 +43,7 @@ function toFormValues(data: SettingsForm): SettingsForm {
     initiativeGoal: data.initiativeGoal,
     empathyExamples: [...data.empathyExamples],
     teamPrompt: data.teamPrompt,
+    happyPathFlow: data.happyPathFlow ?? '',
     empathyScale: data.empathyScale,
     goalOrientationScale: data.goalOrientationScale,
   };
@@ -54,6 +55,7 @@ const defaults: SettingsForm = {
   initiativeGoal: '',
   empathyExamples: ['', '', '', '', ''],
   teamPrompt: '',
+  happyPathFlow: '',
   empathyScale: 5,
   goalOrientationScale: 5,
 };
@@ -255,7 +257,7 @@ function AdminSettings({ password, passwordRequired, onLocked }: { password: str
               <section className="admin-panel" aria-labelledby="voice-title">
                 <div className="admin-panel-head">
                   <div className="admin-panel-number">01</div>
-                  <div><div className="admin-section-kicker">Role, rules and conversation flow</div><h2 id="voice-title">Team prompt</h2></div>
+                  <div><div className="admin-section-kicker">Role, rules and reply style</div><h2 id="voice-title">Response length mode</h2></div>
                   <span className="admin-panel-index">PROMPT</span>
                 </div>
                 <FormField
@@ -274,7 +276,7 @@ function AdminSettings({ password, passwordRequired, onLocked }: { password: str
                           <span className={`team-prompt-status${isDefault ? '' : ' is-custom'}`} data-testid="text-team-prompt-status">{isDefault ? 'Built-in default' : 'Custom'}</span>
                         </div>
                         <p className="admin-help" data-testid="text-team-prompt">
-                          Paste your team’s latest prompt here and press <b>Save changes</b>. It applies to the next message in every chat, and each test session records the version it used. You don’t need to describe cards, option chips, the comparison table or add-to-cart: the app adds those technical rules after this text automatically. The empathy and initiative settings below are added too.
+                          Paste your team’s latest text here and press <b>Save changes</b>. It applies to the next message in every chat, and each test session records the version it used. You don’t need to describe cards, option chips, the comparison table or add-to-cart: the app adds those technical rules automatically.
                         </p>
                         <FormControl>
                           <textarea {...field} className="admin-textarea team-prompt-input" spellCheck={false} rows={22} aria-invalid={!!fieldState.error} data-testid="input-team-prompt" />
@@ -297,9 +299,42 @@ function AdminSettings({ password, passwordRequired, onLocked }: { password: str
                 />
               </section>
 
-              <section className="admin-panel admin-slider-panel" aria-labelledby="approach-title">
+              <section className="admin-panel" aria-labelledby="flow-title">
                 <div className="admin-panel-head">
                   <div className="admin-panel-number">02</div>
+                  <div><div className="admin-section-kicker">Step by step, start to finish</div><h2 id="flow-title">Happy path dialogue flow</h2></div>
+                  <span className="admin-panel-index">FLOW</span>
+                </div>
+                <FormField
+                  control={form.control}
+                  name="happyPathFlow"
+                  rules={{ maxLength: { value: 40000, message: 'Keep the flow under 40,000 characters.' } }}
+                  render={({ field, fieldState }) => (
+                    <FormItem className="team-prompt">
+                      <div className="team-prompt-bar">
+                        <FormLabel className="admin-field-label">Paste or edit the flow</FormLabel>
+                        <span className={`team-prompt-status${field.value.trim() ? ' is-custom' : ''}`} data-testid="text-happy-path-status">{field.value.trim() ? 'In use' : 'Empty'}</span>
+                      </div>
+                      <p className="admin-help">
+                        The ideal conversation, stage by stage. It’s added after the box above, and where the two describe the flow differently, this one wins. Leave it empty to use only the box above.
+                      </p>
+                      <FormControl>
+                        <textarea {...field} className="admin-textarea team-prompt-input" spellCheck={false} rows={18} placeholder={'STAGE 1 — ENTRY / GREETING\n…\n\nSTAGE 2 — INTENT UNDERSTANDING\n…'} aria-invalid={!!fieldState.error} data-testid="input-happy-path-flow" />
+                      </FormControl>
+                      <div className="team-prompt-foot">
+                        <span className={fieldState.error ? 'team-prompt-error' : ''} role={fieldState.error ? 'alert' : undefined}>{fieldState.error?.message ?? `${field.value.length.toLocaleString('en-IN')} characters`}</span>
+                        <button type="button" className="admin-retry" disabled={!field.value} onClick={() => form.setValue('happyPathFlow', '', { shouldDirty: true, shouldValidate: true })} data-testid="button-clear-happy-path">
+                          <RotateCcw size={14} /> Clear
+                        </button>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </section>
+
+              <section className="admin-panel admin-slider-panel" aria-labelledby="approach-title">
+                <div className="admin-panel-head">
+                  <div className="admin-panel-number">03</div>
                   <div><div className="admin-section-kicker">How help should feel</div><h2 id="approach-title">Conversation approach</h2></div>
                   <span className="admin-panel-index">BALANCE</span>
                 </div>

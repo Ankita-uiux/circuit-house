@@ -26,6 +26,8 @@ export const assistantBehaviorSettingsTable = pgTable(
       .default(sql`'{}'::text[]`),
     // The team's prompt as pasted in /admin. Empty means "use the built-in default".
     teamPrompt: text("team_prompt").notNull().default(""),
+    // "Happy path dialogue flow" from /admin; empty means none.
+    happyPathFlow: text("happy_path_flow").notNull().default(""),
     empathyScale: integer("empathy_scale").notNull(),
     goalOrientationScale: integer("goal_orientation_scale").notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })

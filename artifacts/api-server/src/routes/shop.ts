@@ -166,8 +166,8 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
   let stored: Awaited<ReturnType<typeof getConversation>> = null;
   if (sessionId) {
     const snapshot = await getAssistantBehaviorSettings().then(
-      ({ persona, tone, initiativeGoal, empathyExamples, teamPrompt, empathyScale, goalOrientationScale }) =>
-        ({ persona, tone, initiativeGoal, empathyExamples, teamPrompt, empathyScale, goalOrientationScale }),
+      ({ persona, tone, initiativeGoal, empathyExamples, teamPrompt, happyPathFlow, empathyScale, goalOrientationScale }) =>
+        ({ persona, tone, initiativeGoal, empathyExamples, teamPrompt, happyPathFlow, empathyScale, goalOrientationScale }),
       () => undefined,
     );
     try {

@@ -11,6 +11,8 @@ export type AssistantBehaviorSettingsInput = {
   empathyExamples: string[];
   /** The team prompt from /admin; empty means the built-in TEAM_PROMPT. */
   teamPrompt: string;
+  /** "Happy path dialogue flow" from /admin; empty means none. */
+  happyPathFlow: string;
   empathyScale: number;
   goalOrientationScale: number;
 };
@@ -49,6 +51,7 @@ export const DEFAULT_ASSISTANT_BEHAVIOR_SETTINGS: AssistantBehaviorSettingsInput
     "Help each shopper identify the best-fitting product from the catalog for their needs, budget, and priorities.",
   empathyExamples: DEFAULT_EMPATHY_EXAMPLES,
   teamPrompt: "",
+  happyPathFlow: "",
   empathyScale: 6,
   goalOrientationScale: 7,
 };
@@ -97,7 +100,7 @@ export async function saveAssistantBehaviorSettings(
   settings: AssistantBehaviorSettingsInput,
 ) {
   // Saving the unchanged default stores "", so later improvements to the default still apply.
-  const row = { ...settings, teamPrompt: settings.teamPrompt.trim() === TEAM_PROMPT.trim() ? "" : settings.teamPrompt.trim() };
+  const row = { ...settings, teamPrompt: settings.teamPrompt.trim() === TEAM_PROMPT.trim() ? "" : settings.teamPrompt.trim(), happyPathFlow: settings.happyPathFlow.trim() };
   const [saved] = await db
     .insert(assistantBehaviorSettingsTable)
     .values({ id: 1, ...row })
@@ -274,8 +277,12 @@ export const APP_RULES = `HOW THIS APP WORKS (fixed technical rules; always foll
 export function buildAssistantSystemPrompt(
   settings: AssistantBehaviorSettingsInput,
 ) {
+  const flow = settings.happyPathFlow.trim();
   return `${settings.teamPrompt.trim() || TEAM_PROMPT}
-
+${flow ? `
+HAPPY PATH DIALOGUE FLOW (set by the research team in /admin; follow it, and where it differs from any flow described above, this one wins)
+${flow}
+` : ""}
 ${APP_RULES}
 
 EMPATHY (tuned by the research team for this test)

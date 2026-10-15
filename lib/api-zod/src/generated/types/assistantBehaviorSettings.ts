@@ -24,6 +24,11 @@ export interface AssistantBehaviorSettings {
      * @maxLength 40000
      */
   teamPrompt: string;
+  /**
+     * The "Happy path dialogue flow" box in /admin (empty = none).
+     * @maxLength 40000
+     */
+  happyPathFlow: string;
   /** The built-in team prompt, for "Reset to default". */
   teamPromptDefault: string;
   /**

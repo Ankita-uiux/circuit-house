@@ -34,6 +34,8 @@ export interface AssistantBehaviorSettingsUpdate {
      * @maxLength 40000
      */
   teamPrompt: string;
+  /** @maxLength 40000 */
+  happyPathFlow: string;
   /**
      * @minimum 0
      * @maximum 10

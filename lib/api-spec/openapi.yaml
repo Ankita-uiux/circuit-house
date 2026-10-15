@@ -418,6 +418,10 @@ components:
           type: string
           maxLength: 40000
           description: The live team prompt (the default when nothing has been pasted).
+        happyPathFlow:
+          type: string
+          maxLength: 40000
+          description: The "Happy path dialogue flow" box in /admin (empty = none).
         teamPromptDefault:
           type: string
           description: The built-in team prompt, for "Reset to default".
@@ -432,7 +436,7 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required: [persona, tone, initiativeGoal, empathyExamples, teamPrompt, teamPromptDefault, empathyScale, goalOrientationScale, updatedAt]
+      required: [persona, tone, initiativeGoal, empathyExamples, teamPrompt, happyPathFlow, teamPromptDefault, empathyScale, goalOrientationScale, updatedAt]
     AssistantBehaviorSettingsUpdate:
       type: object
       properties:
@@ -460,6 +464,9 @@ components:
           type: string
           minLength: 1
           maxLength: 40000
+        happyPathFlow:
+          type: string
+          maxLength: 40000
         empathyScale:
           type: integer
           minimum: 0
@@ -468,7 +475,7 @@ components:
           type: integer
           minimum: 0
           maximum: 10
-      required: [persona, tone, initiativeGoal, empathyExamples, teamPrompt, empathyScale, goalOrientationScale]
+      required: [persona, tone, initiativeGoal, empathyExamples, teamPrompt, happyPathFlow, empathyScale, goalOrientationScale]
     ShoppingAssistantError:
       type: object
       properties:
