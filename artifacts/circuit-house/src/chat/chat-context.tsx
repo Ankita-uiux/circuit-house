@@ -34,7 +34,7 @@ export type ChatMessage = {
 
 export type FeedbackInput = { rating: 'up' | 'down' | null; reasons?: string[]; details?: string };
 
-export const NAME_QUESTION = 'Hi! I’m your Circuit House shopping buddy 👋 Tell me what you need and your budget, and I’ll find the 3 best matches from our store. What should I call you?';
+export const NAME_QUESTION = 'Hi! Before we get started, what should I call you? A first name or nickname is fine.';
 const GREETING: ChatMessage = { role: 'assistant', content: NAME_QUESTION };
 const SESSION_KEY = 'circuit-house-chat-session';
 const NAME_KEY = 'circuit-house-participant-name';

@@ -20,7 +20,7 @@ export const TEST_CARDS = [
 ] as const;
 
 export const CHAT_SESSION_HEADER = "x-chat-session";
-export const NAME_GREETING = "Hi! I’m your Circuit House shopping buddy 👋 Tell me what you need and your budget, and I’ll find the 3 best matches from our store. What should I call you?";
+export const NAME_GREETING = "Hi! Before we get started, what should I call you? A first name or nickname is fine.";
 export function shoppingGreeting(name: string) {
   return `Nice to meet you, ${name}! What are you shopping for today?`;
 }
