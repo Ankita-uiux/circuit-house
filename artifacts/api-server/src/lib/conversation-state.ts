@@ -29,6 +29,8 @@ export type ConversationState = {
   name_skipped: boolean;
   verbosity: Verbosity;
   mode: ShoppingMode | null;
+  /** Human handover: whether a store expert is "on the way", and how many times one was offered. */
+  handover: { expert_on_the_way: boolean; offers_made: number };
   /** Products fetched from the web in this conversation, kept so prices and details stay the same. Not sent to the model as state. */
   web_products: CachedWebProduct[];
 };
@@ -50,6 +52,7 @@ export const EMPTY_STATE: ConversationState = {
   name_skipped: false,
   verbosity: "normal",
   mode: null,
+  handover: { expert_on_the_way: false, offers_made: 0 },
   web_products: [],
 };
 
@@ -91,6 +94,10 @@ export function normalizeState(input: unknown): ConversationState {
     name_skipped: raw.name_skipped === true,
     verbosity: raw.verbosity === "short" || raw.verbosity === "detailed" ? raw.verbosity : "normal",
     mode: raw.mode === "help-me-choose" || raw.mode === "know-what-i-want" ? raw.mode : null,
+    handover: {
+      expert_on_the_way: (raw.handover as { expert_on_the_way?: unknown } | undefined)?.expert_on_the_way === true,
+      offers_made: Math.max(0, Math.min(9, Number((raw.handover as { offers_made?: unknown } | undefined)?.offers_made) || 0)),
+    },
     web_products: Array.isArray(raw.web_products)
       ? (raw.web_products.filter((item) => {
           if (!item || typeof item !== "object") return false;

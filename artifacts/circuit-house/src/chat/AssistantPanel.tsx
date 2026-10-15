@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
-import { ArrowDown, ChevronRight, CornerUpLeft, Headset, MessageCircle, Send, ShoppingCart, SquarePen, X } from 'lucide-react';
+import { ArrowDown, ChevronRight, CornerUpLeft, MessageCircle, Send, ShoppingCart, SquarePen, X } from 'lucide-react';
 import type { Product } from '@workspace/api-client-react';
 import { useToast } from '@/hooks/use-toast';
 import { CHAT_INACTIVITY_MESSAGE, useChatInactivity } from '@/hooks/use-chat-inactivity';
@@ -158,7 +158,7 @@ export function AssistantPanel() {
   const pickOption = (text: string) => {
     const key = text.trim().toLowerCase();
     if (key === 'go to cart' || key === 'view cart') { cart.setOpen(true); return; }
-    if (key === 'talk to store expert' || key === 'talk to a store expert') { chat.requestHuman(); return; }
+    if (key === 'chat with an expert') { chat.requestHuman(); return; }
     void send(text);
   };
   const replyTo = (message: ChatMessage) => {
@@ -172,7 +172,6 @@ export function AssistantPanel() {
       <aside className={`assistant-panel${open ? ' is-open' : ''}`} role="dialog" aria-labelledby="assistant-panel-title" aria-hidden={!open} inert={!open} data-testid="panel-assistant">
         <header className="assistant-panel-top">
           <h2 id="assistant-panel-title">Ask Circuit <span className="assistant-beta">Beta</span></h2>
-          <button type="button" className="assistant-icon-btn" onClick={chat.requestHuman} disabled={!!pending || collectingName} aria-label="Talk to store expert" title="Talk to store expert" data-testid="button-talk-to-expert"><Headset size={18} /></button>
           <button type="button" className="assistant-icon-btn assistant-bag-btn" onClick={() => cart.setOpen(true)} aria-label={`Open bag, ${cart.count} items`} title="Bag" data-testid="button-chat-bag"><ShoppingCart size={18} />{cart.count > 0 && <span className="cx-cart-count">{cart.count}</span>}</button>
           <button type="button" className="assistant-icon-btn" onClick={chat.newChat} disabled={!!pending} aria-label="Start a new chat" title="New chat" data-testid="button-new-chat"><SquarePen size={18} /></button>
           <button type="button" className="assistant-icon-btn is-filled" onClick={() => setOpen(false)} aria-label="Close the shopping assistant" title="Close" data-testid="button-close-assistant"><X size={18} /></button>
@@ -198,7 +197,10 @@ export function AssistantPanel() {
             return (
               <div key={`${index}-${message.role}`} data-index={index} className={`assistant-turn ${message.role}`}>
                 {message.quote && <div className="assistant-quote-in-turn"><CornerUpLeft size={12} /> <span>{message.quote}</span></div>}
-                {message.kind === 'human' ? <HumanCard text={message.content} /> : (
+                {message.kind === 'human' && (
+                  <div className="assistant-message assistant" data-testid={`message-${message.role}-${index}`}><FormattedReply text={message.content} /></div>
+                )}
+                {message.kind === 'human' ? <HumanCard /> : (
                   <div className={`assistant-message ${message.role}`} data-testid={`message-${message.role}-${index}`}>
                     {message.role === 'assistant'
                       ? (message.animate ? <TypedReply text={message.content} animate onDone={onDone(index)} /> : <FormattedReply text={message.content} />)

@@ -29,6 +29,13 @@ export interface AssistantBehaviorSettings {
      * @maxLength 40000
      */
   happyPathFlow: string;
+  /**
+     * The live "Human handover" box (the default when nothing has been saved).
+     * @maxLength 40000
+     */
+  humanHandover: string;
+  /** The built-in human handover rules, for "Reset to default". */
+  humanHandoverDefault: string;
   /** The built-in team prompt, for "Reset to default". */
   teamPromptDefault: string;
   /**

@@ -280,7 +280,7 @@ components:
           $ref: "#/components/schemas/ChatPreferences"
         requestHuman:
           type: boolean
-          description: The shopper tapped "Talk to store expert".
+          description: The shopper tapped [Chat with an expert] (hand over to a store expert).
         compareIds:
           type: array
           maxItems: 3
@@ -422,6 +422,13 @@ components:
           type: string
           maxLength: 40000
           description: The "Happy path dialogue flow" box in /admin (empty = none).
+        humanHandover:
+          type: string
+          maxLength: 40000
+          description: The live "Human handover" box (the default when nothing has been saved).
+        humanHandoverDefault:
+          type: string
+          description: The built-in human handover rules, for "Reset to default".
         teamPromptDefault:
           type: string
           description: The built-in team prompt, for "Reset to default".
@@ -436,7 +443,7 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required: [persona, tone, initiativeGoal, empathyExamples, teamPrompt, happyPathFlow, teamPromptDefault, empathyScale, goalOrientationScale, updatedAt]
+      required: [persona, tone, initiativeGoal, empathyExamples, teamPrompt, happyPathFlow, humanHandover, humanHandoverDefault, teamPromptDefault, empathyScale, goalOrientationScale, updatedAt]
     AssistantBehaviorSettingsUpdate:
       type: object
       properties:
@@ -467,6 +474,10 @@ components:
         happyPathFlow:
           type: string
           maxLength: 40000
+        humanHandover:
+          type: string
+          minLength: 1
+          maxLength: 40000
         empathyScale:
           type: integer
           minimum: 0
@@ -475,7 +486,7 @@ components:
           type: integer
           minimum: 0
           maximum: 10
-      required: [persona, tone, initiativeGoal, empathyExamples, teamPrompt, happyPathFlow, empathyScale, goalOrientationScale]
+      required: [persona, tone, initiativeGoal, empathyExamples, teamPrompt, happyPathFlow, humanHandover, empathyScale, goalOrientationScale]
     ShoppingAssistantError:
       type: object
       properties:

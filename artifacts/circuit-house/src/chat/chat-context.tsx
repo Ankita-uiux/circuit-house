@@ -21,7 +21,7 @@ export type ChatMessage = {
   createdAt?: string;
   /** Shown locally only, e.g. a failed request notice. */
   local?: boolean;
-  /** "human" replies are shown as a call-back card. */
+  /** "human" replies are shown with the "Connecting you to a store expert" card. */
   kind?: 'reply' | 'human' | 'off-topic';
   suggestions?: string[];
   feedback?: { rating: 'up' | 'down'; reasons?: string[]; details?: string } | null;
@@ -78,7 +78,7 @@ type ChatContextValue = {
   pushLocal: (message: ChatMessage) => void;
   /** Saves thumbs up / down on a reply. */
   giveFeedback: (messageId: number, input: FeedbackInput) => Promise<void>;
-  /** "Talk to store expert". */
+  /** [Chat with an expert]: hand over to a store expert. */
   requestHuman: () => void;
   /** Marks a reply as fully shown (stops the word-by-word reveal). */
   finishAnimation: (index: number) => void;
@@ -283,7 +283,7 @@ export function ChatProvider({ cart, onCartAdd, children }: { cart: CartLine[]; 
         throw new Error('Feedback not saved');
       }
     },
-    requestHuman: () => { if (nameStepDone) void send('I’d like to talk to a store expert.', { requestHuman: true, quote: null }); },
+    requestHuman: () => { if (nameStepDone) void send('Chat with an expert', { requestHuman: true, quote: null }); },
     finishAnimation: (index) => setMessages((current) => current.map((message, i) => (i === index && message.animate ? { ...message, animate: false } : message))),
   }), [sessionId, open, messages, participantName, nameStepDone, pending, loading, error, prompt, quote, preferences, send, ask, reset]);
 

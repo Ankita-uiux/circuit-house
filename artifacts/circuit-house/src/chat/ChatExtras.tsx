@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ArrowUp, PhoneCall, Sparkles, ThumbsDown, ThumbsUp, X } from 'lucide-react';
+import { ArrowUp, MessagesSquare, Sparkles, ThumbsDown, ThumbsUp, X } from 'lucide-react';
 import type { ChatPreferences } from '@workspace/api-client-react';
 import { formatPrice } from '@/shared';
 import { ProductImage, rememberedProduct } from '@/components/store-ui';
@@ -201,11 +201,12 @@ export function ComparisonTable({ comparison }: { comparison: NonNullable<ChatMe
 }
 
 /* ---------- Human request card ---------- */
-export function HumanCard({ text }: { text: string }) {
+/** Shown when the shopper is handed over to a store expert (text chat, not a call). */
+export function HumanCard() {
   return (
     <div className="ch-human" role="status" data-testid="card-human">
-      <span className="ch-human-icon"><PhoneCall size={20} /></span>
-      <div><b>{text}</b><span>Keep this tab open. A Circuit House store expert is on the way.</span></div>
+      <span className="ch-human-icon"><MessagesSquare size={20} /></span>
+      <div><b>Connecting you to a store expert</b><span>They’ll reply here in about a minute.</span></div>
     </div>
   );
 }

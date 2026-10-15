@@ -28,6 +28,8 @@ export const assistantBehaviorSettingsTable = pgTable(
     teamPrompt: text("team_prompt").notNull().default(""),
     // "Happy path dialogue flow" from /admin; empty means none.
     happyPathFlow: text("happy_path_flow").notNull().default(""),
+    // "Human handover" box from /admin; empty means the built-in default.
+    humanHandover: text("human_handover").notNull().default(""),
     empathyScale: integer("empathy_scale").notNull(),
     goalOrientationScale: integer("goal_orientation_scale").notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })

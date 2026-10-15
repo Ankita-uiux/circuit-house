@@ -30,7 +30,7 @@ export interface ShoppingAssistantInput {
      */
   bag?: BagLine[];
   preferences?: ChatPreferences;
-  /** The shopper tapped "Talk to store expert". */
+  /** The shopper tapped [Chat with an expert] (hand over to a store expert). */
   requestHuman?: boolean;
   /**
      * The shopper tapped "Compare all" under a reply with three products; these are their IDs.

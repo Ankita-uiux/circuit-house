@@ -38,7 +38,7 @@ Products for this turn:
 - localCatalog has already been filtered to the shopper's category, budget (up to budget_stretch) and brand exclusions. Only recommend from it, from sessionProducts, or from externalProducts backed by marketResearch. If localCatalog and sessionProducts are empty because the category is not known yet, recommend nothing and find out what they are shopping for.
 - A product priced above budget_max (but within budget_stretch) is shown with a "+₹X over budget" label; say so honestly when you suggest it.
 - sessionProducts are products already found on the web earlier in this conversation; reuse their exact IDs and prices.
-- options: the tappable choices shown under your reply (3–6 when you ask a question, the action buttons in stages 3 and 4, otherwise 2–3 short follow-ups the shopper might tap, in their voice). Each under 30 characters. Use "Talk to store expert" when a human is the right next step.
+- options: the tappable choices shown under your reply (3–6 when you ask a question, the action buttons in stages 3 and 4, otherwise 2–3 short follow-ups the shopper might tap, in their voice). Each under 30 characters. Never offer a store expert as an option: handovers use the handover field.
 - productNotes: one entry per productId you return (why, headsUp). comparison: only for "Compare all 3", otherwise null. cartAddId: only when the shopper clearly asked to add that product to the cart; otherwise null.
 - conversationStage and missingSlots are computed from conversationState: follow the stage rules for that stage.
 - storeServices, when present, holds demo results for order lookup, returns, exchange estimates and delivery by PIN code, plus store policies. Answer service questions only from it, and ask for the order ID, PIN code or old model when needed.`;
@@ -84,7 +84,17 @@ const OFF_TOPIC_STEER: Record<string, string> = {
   TVs: "the right TV",
 };
 
-const HUMAN_REPLY = "Our store expert will call you in 10 seconds 📞";
+const HUMAN_REPLY = "Sure! I’m connecting you with a Circuit House store expert now. I’ve shared what we’ve talked about, so you won’t need to repeat anything. They’ll message you here in about a minute.";
+/** Reply while the shopper waits for the expert and asks for a person again. */
+const WAITING_REPLY = "Thanks for your patience! Your expert will be with you shortly. Anything quick I can help with meanwhile?";
+const OFFER_OPTIONS = ["Chat with an expert", "Try another way"];
+type HandoverReason = "asked" | "cant-handle" | "frustrated" | "circles" | "confused";
+const HANDOVER_REASONS: HandoverReason[] = ["asked", "cant-handle", "frustrated", "circles", "confused"];
+const HANDOVER_LABELS: Record<HandoverReason, string> = {
+  asked: "asked for a person", "cant-handle": "something the assistant can’t handle", frustrated: "shopper seemed frustrated", circles: "conversation going in circles", confused: "shopper stayed confused",
+};
+/** Options the model might still add for a human; handovers go through the handover field instead. */
+const EXPERT_OPTION = /\b(store expert|talk to (a |an )?(human|person|agent)|human agent|real person|customer care)\b/i;
 const HUMAN_REQUEST = /\b(talk|speak|connect|chat)\s+(to|with)\s+(a\s+|an\s+|some\s*one|the\s+)?(human|person|real person|agent|executive|store (staff|expert)|staff|expert|someone)\b|\b(customer care|call me back|human agent|real human)\b/i;
 
 function offTopicReply(state: ConversationState) {
@@ -166,8 +176,8 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
   let stored: Awaited<ReturnType<typeof getConversation>> = null;
   if (sessionId) {
     const snapshot = await getAssistantBehaviorSettings().then(
-      ({ persona, tone, initiativeGoal, empathyExamples, teamPrompt, happyPathFlow, empathyScale, goalOrientationScale }) =>
-        ({ persona, tone, initiativeGoal, empathyExamples, teamPrompt, happyPathFlow, empathyScale, goalOrientationScale }),
+      ({ persona, tone, initiativeGoal, empathyExamples, teamPrompt, happyPathFlow, humanHandover, empathyScale, goalOrientationScale }) =>
+        ({ persona, tone, initiativeGoal, empathyExamples, teamPrompt, happyPathFlow, humanHandover, empathyScale, goalOrientationScale }),
       () => undefined,
     );
     try {
@@ -216,7 +226,7 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
     }
     state = update.state;
 
-    type Extras = { options?: string[]; comparison?: Comparison | null; cartAdd?: StoreProduct | null };
+    type Extras = { options?: string[]; comparison?: Comparison | null; cartAdd?: StoreProduct | null; handover?: { action: "connect" | "offer"; reason: HandoverReason } | null };
     const finish = async (reply: string, cards: StoreProduct[], market: MarketResult, extraLog = "", kind: "reply" | "human" | "off-topic" = "reply", extras: Extras = {}) => {
       const suggestions = extras.options ?? [];
       const comparison = extras.comparison ?? null;
@@ -226,16 +236,21 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
       if (sessionId) {
         await saveSessionState(sessionId, state).catch((error) => req.log.warn({ error: String(error) }, "Could not save conversation state"));
         messageId = await logMessage(sessionId, "assistant", reply + extraLog, cards.map((product) => product.id), Date.now() - startedAt,
-          { display: reply, products: cards, market: marketForUi, intent: update.intent, interpretation: update.interpretation || undefined, kind, suggestions, comparison, cartAdd: cartAdd ? { id: cartAdd.id, name: cartAdd.name } : null });
+          { display: reply, products: cards, market: marketForUi, intent: update.intent, interpretation: update.interpretation || undefined, kind, suggestions, comparison, cartAdd: cartAdd ? { id: cartAdd.id, name: cartAdd.name } : null, handover: extras.handover ?? null });
       }
       res.json(GetShoppingAssistantReplyResponse.parse({ reply, products: cards, market: marketForUi, messageId, kind, suggestions, comparison, cartAdd }));
     };
     const noMarket: MarketResult = { status: "not-needed", checkedAt: null, sources: [], evidence: "" };
 
-    // A request for a person (or the "Talk to store expert" button): a call-back card, logged for the study.
+    // A request for a person (typed, or the [Chat with an expert] button): connect at once, logged for the study.
     if (parsed.data.requestHuman || update.intent === "human" || HUMAN_REQUEST.test(message)) {
       update.intent = "human";
-      await finish(HUMAN_REPLY, [], noMarket, "\n\n[Shopper asked for a human store expert]", "human");
+      if (state.handover.expert_on_the_way) {
+        await finish(WAITING_REPLY, [], noMarket, "\n\n[Handover: shopper asked again while waiting for the expert]");
+        return;
+      }
+      state.handover = { ...state.handover, expert_on_the_way: true };
+      await finish(HUMAN_REPLY, [], noMarket, `\n\n[Handover: connected · ${HANDOVER_LABELS.asked}]`, "human", { handover: { action: "connect", reason: "asked" } });
       return;
     }
 
@@ -335,8 +350,10 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
                 required: ["productIds", "rows"],
               },
               cartAddId: { type: ["string", "null"] },
+              handover: { type: ["string", "null"], enum: ["connect", "offer", null] },
+              handoverReason: { type: ["string", "null"], enum: [...HANDOVER_REASONS, null] },
             },
-            required: ["reply", "productIds", "externalProducts", "options", "productNotes", "comparison", "cartAddId"],
+            required: ["reply", "productIds", "externalProducts", "options", "productNotes", "comparison", "cartAddId", "handover", "handoverReason"],
             additionalProperties: false,
           },
         },
@@ -368,10 +385,10 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
     const raw = completion.choices[0]?.message.content;
     if (!raw) throw new Error("The recommendation model returned an empty response.");
 
-    const result = JSON.parse(raw) as { reply?: unknown; productIds?: unknown; externalProducts?: unknown; options?: unknown; productNotes?: unknown; comparison?: unknown; cartAddId?: unknown };
+    const result = JSON.parse(raw) as { reply?: unknown; productIds?: unknown; externalProducts?: unknown; options?: unknown; productNotes?: unknown; comparison?: unknown; cartAddId?: unknown; handover?: unknown; handoverReason?: unknown };
     const options = (Array.isArray(result.options) ? result.options : [])
       .filter((item): item is string => typeof item === "string" && item.trim().length > 0 && item.length <= 60)
-      .map((item) => sanitizeReply(item.trim())).filter(Boolean).slice(0, 6);
+      .map((item) => sanitizeReply(item.trim())).filter((item) => item && !EXPERT_OPTION.test(item)).slice(0, 6);
     const notes = new Map<string, { why: string; headsUp: string | null }>();
     for (const note of Array.isArray(result.productNotes) ? result.productNotes : []) {
       const row = note as { id?: unknown; why?: unknown; headsUp?: unknown };
@@ -463,6 +480,19 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
     const webLog = fresh.length ? `\n\nWeb product snapshots:\n${JSON.stringify(fresh.map(({ id, name, price, priceSource }) => ({ id, name, price, source: priceSource.url })))}` : "";
     const serviceLog = storeServices ? `\n\nStore service data:\n${JSON.stringify({ ...storeServices, policies: undefined })}` : "";
     const cartLog = cartAdd ? `\n\n[Added to cart by the assistant: ${cartAdd.name}]` : "";
+
+    // Human handover chosen by the model ("connect" or "offer"), within the limits the app enforces.
+    const reason: HandoverReason = HANDOVER_REASONS.includes(result.handoverReason as HandoverReason) ? (result.handoverReason as HandoverReason) : "asked";
+    if (result.handover === "connect" && !state.handover.expert_on_the_way) {
+      state.handover = { ...state.handover, expert_on_the_way: true };
+      await finish(replyText, [], noMarket, `\n\n[Handover: connected · ${HANDOVER_LABELS[reason]}]`, "human", { handover: { action: "connect", reason } });
+      return;
+    }
+    if (result.handover === "offer" && !state.handover.expert_on_the_way && state.handover.offers_made < 2) {
+      state.handover = { ...state.handover, offers_made: state.handover.offers_made + 1 };
+      await finish(replyText, cards, market, sourceLog + webLog + serviceLog + `\n\n[Handover: offered an expert · ${HANDOVER_LABELS[reason]}]`, "reply", { options: OFFER_OPTIONS, handover: { action: "offer", reason } });
+      return;
+    }
     await finish(replyText, cards, market, sourceLog + webLog + serviceLog + cartLog, "reply", { options, comparison, cartAdd });
   } catch (error) {
     req.log.error({ error }, "Shopping assistant request failed");

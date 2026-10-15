@@ -44,6 +44,7 @@ function toFormValues(data: SettingsForm): SettingsForm {
     empathyExamples: [...data.empathyExamples],
     teamPrompt: data.teamPrompt,
     happyPathFlow: data.happyPathFlow ?? '',
+    humanHandover: data.humanHandover,
     empathyScale: data.empathyScale,
     goalOrientationScale: data.goalOrientationScale,
   };
@@ -56,6 +57,7 @@ const defaults: SettingsForm = {
   empathyExamples: ['', '', '', '', ''],
   teamPrompt: '',
   happyPathFlow: '',
+  humanHandover: '',
   empathyScale: 5,
   goalOrientationScale: 5,
 };
@@ -332,9 +334,54 @@ function AdminSettings({ password, passwordRequired, onLocked }: { password: str
                 />
               </section>
 
-              <section className="admin-panel admin-slider-panel" aria-labelledby="approach-title">
+              <section className="admin-panel" aria-labelledby="handover-title">
                 <div className="admin-panel-head">
                   <div className="admin-panel-number">03</div>
+                  <div><div className="admin-section-kicker">When to bring in a person</div><h2 id="handover-title">Human handover</h2></div>
+                  <span className="admin-panel-index">HANDOVER</span>
+                </div>
+                <FormField
+                  control={form.control}
+                  name="humanHandover"
+                  rules={{
+                    validate: (value) => value.trim().length > 0 || 'The handover rules can’t be empty. Use Reset to default to start again.',
+                    maxLength: { value: 40000, message: 'Keep the rules under 40,000 characters.' },
+                  }}
+                  render={({ field, fieldState }) => {
+                    const isDefault = field.value.trim() === (settingsQuery.data?.humanHandoverDefault ?? '').trim();
+                    return (
+                      <FormItem className="team-prompt">
+                        <div className="team-prompt-bar">
+                          <FormLabel className="admin-field-label">Paste or edit the handover rules</FormLabel>
+                          <span className={`team-prompt-status${isDefault ? '' : ' is-custom'}`} data-testid="text-human-handover-status">{isDefault ? 'Built-in default' : 'Custom'}</span>
+                        </div>
+                        <p className="admin-help">
+                          When the assistant should offer a store expert or connect one, and what it says. On “connect” the chat shows a “Connecting you to a store expert” card; on “offer” it shows [Chat with an expert] and [Try another way]. Typing “human”, “agent” or “customer care” always connects straight away.
+                        </p>
+                        <FormControl>
+                          <textarea {...field} className="admin-textarea team-prompt-input" spellCheck={false} rows={18} aria-invalid={!!fieldState.error} data-testid="input-human-handover" />
+                        </FormControl>
+                        <div className="team-prompt-foot">
+                          <span className={fieldState.error ? 'team-prompt-error' : ''} role={fieldState.error ? 'alert' : undefined}>{fieldState.error?.message ?? `${field.value.length.toLocaleString('en-IN')} characters`}</span>
+                          <button
+                            type="button"
+                            className="admin-retry"
+                            disabled={isDefault}
+                            onClick={() => form.setValue('humanHandover', settingsQuery.data?.humanHandoverDefault ?? '', { shouldDirty: true, shouldValidate: true })}
+                            data-testid="button-reset-human-handover"
+                          >
+                            <RotateCcw size={14} /> Reset to default
+                          </button>
+                        </div>
+                      </FormItem>
+                    );
+                  }}
+                />
+              </section>
+
+              <section className="admin-panel admin-slider-panel" aria-labelledby="approach-title">
+                <div className="admin-panel-head">
+                  <div className="admin-panel-number">04</div>
                   <div><div className="admin-section-kicker">How help should feel</div><h2 id="approach-title">Conversation approach</h2></div>
                   <span className="admin-panel-index">BALANCE</span>
                 </div>

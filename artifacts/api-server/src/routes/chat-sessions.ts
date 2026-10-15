@@ -45,7 +45,7 @@ router.post("/shop/chat-sessions/:id/start", async (req, res): Promise<void> => 
   }
   try {
     // Snapshot for the research log: the live team prompt plus sliders (not the built-in default copy).
-    const { teamPromptDefault: _default, updatedAt: _updated, ...settings } = await getAssistantBehaviorSettings();
+    const { teamPromptDefault: _default, humanHandoverDefault: _handoverDefault, updatedAt: _updated, ...settings } = await getAssistantBehaviorSettings();
     const existing = await getSessionState(id);
     const state = normalizeState(existing?.state);
     if (existing?.participantName) {

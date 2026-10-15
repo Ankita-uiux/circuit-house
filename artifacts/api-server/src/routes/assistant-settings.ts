@@ -39,7 +39,12 @@ router.put("/shop/assistant/settings", requireAdmin, async (req, res): Promise<v
     empathyExamples: parsed.data.empathyExamples.map((example) => example.trim()),
     teamPrompt: parsed.data.teamPrompt.trim(),
     happyPathFlow: (parsed.data.happyPathFlow ?? "").trim(),
+    humanHandover: parsed.data.humanHandover.trim(),
   };
+  if (!settings.humanHandover) {
+    res.status(400).json({ error: "The human handover rules cannot be blank. Use Reset to default to start again." });
+    return;
+  }
   if (!settings.teamPrompt) {
     res.status(400).json({ error: "The response length mode prompt cannot be blank. Use Reset to default to start again." });
     return;

@@ -13,6 +13,8 @@ export type AssistantBehaviorSettingsInput = {
   teamPrompt: string;
   /** "Happy path dialogue flow" from /admin; empty means none. */
   happyPathFlow: string;
+  /** "Human handover" box from /admin; empty means the built-in HUMAN_HANDOVER_DEFAULT. */
+  humanHandover: string;
   empathyScale: number;
   goalOrientationScale: number;
 };
@@ -52,6 +54,7 @@ export const DEFAULT_ASSISTANT_BEHAVIOR_SETTINGS: AssistantBehaviorSettingsInput
   empathyExamples: DEFAULT_EMPATHY_EXAMPLES,
   teamPrompt: "",
   happyPathFlow: "",
+  humanHandover: "",
   empathyScale: 6,
   goalOrientationScale: 7,
 };
@@ -60,12 +63,14 @@ export const DEFAULT_ASSISTANT_BEHAVIOR_SETTINGS: AssistantBehaviorSettingsInput
  * Fills in defaults for older rows: empathy examples, and the team prompt
  * (an empty saved prompt means "use the built-in one").
  */
-function withEmpathyExamples<T extends { empathyExamples: string[]; teamPrompt: string }>(row: T): T & { teamPromptDefault: string } {
+function withEmpathyExamples<T extends { empathyExamples: string[]; teamPrompt: string; humanHandover: string }>(row: T): T & { teamPromptDefault: string; humanHandoverDefault: string } {
   return {
     ...row,
     empathyExamples: row.empathyExamples.length === EMPATHY_STAGES.length ? row.empathyExamples : DEFAULT_EMPATHY_EXAMPLES,
     teamPrompt: row.teamPrompt.trim() || TEAM_PROMPT,
     teamPromptDefault: TEAM_PROMPT,
+    humanHandover: row.humanHandover.trim() || HUMAN_HANDOVER_DEFAULT,
+    humanHandoverDefault: HUMAN_HANDOVER_DEFAULT,
   };
 }
 
@@ -100,7 +105,7 @@ export async function saveAssistantBehaviorSettings(
   settings: AssistantBehaviorSettingsInput,
 ) {
   // Saving the unchanged default stores "", so later improvements to the default still apply.
-  const row = { ...settings, teamPrompt: settings.teamPrompt.trim() === TEAM_PROMPT.trim() ? "" : settings.teamPrompt.trim(), happyPathFlow: settings.happyPathFlow.trim() };
+  const row = { ...settings, teamPrompt: settings.teamPrompt.trim() === TEAM_PROMPT.trim() ? "" : settings.teamPrompt.trim(), happyPathFlow: settings.happyPathFlow.trim(), humanHandover: settings.humanHandover.trim() === HUMAN_HANDOVER_DEFAULT.trim() ? "" : settings.humanHandover.trim() };
   const [saved] = await db
     .insert(assistantBehaviorSettingsTable)
     .values({ id: 1, ...row })
@@ -259,6 +264,103 @@ RESPONSE RULES (all stages)
 - Format: short paragraphs; "- " for bullet points; product names in **double asterisks**; prices in Indian rupees with Indian digit grouping (₹69,900, ₹1,19,900), never dollars. No headings, markdown tables, links or source citations.`;
 
 /**
+ * Default text of the "Human handover" box in /admin: when to offer or connect a
+ * store expert, and the exact messages. The admin can edit it; empty = this default.
+ */
+export const HUMAN_HANDOVER_DEFAULT = `HUMAN HANDOVER
+Check these on every turn, before you reply. There are two actions:
+- CONNECT: tell the shopper a store expert is joining. The app shows the
+  "Connecting you to a store expert" card.
+- OFFER: ask if they'd like a store expert. The app shows two buttons:
+  [Chat with an expert] [Try another way].
+
+THE TRIGGERS (in priority order)
+
+1. ASKS FOR A PERSON → CONNECT right away
+   "human", "agent", "real person", "customer care", "talk to someone",
+   "call me", "expert". Don't try to solve it first, don't ask why, don't argue.
+
+2. SOMETHING YOU'RE NOT ALLOWED TO HANDLE → CONNECT right away
+   Refunds, payment problems, price matches or special deals, order
+   complaints, a damaged product, or a safety problem (swelling battery,
+   smoke, overheating, shock). For safety, first tell them to stop using the
+   device and unplug it.
+
+3. FRUSTRATED → apologise once, then OFFER
+   Act on ONE strong sign ("this is useless", "that's not what I asked",
+   "you're not helping", "waste of time") or TWO weak signs together
+   (ALL CAPS, "???" or "!!!", a sudden curt or rude reply, "ugh").
+   Stop suggesting products until they choose.
+
+4. GOING IN CIRCLES → admit it, then OFFER
+   They restate the same need twice, you're about to give nearly the same
+   answer again, or they say "I already told you" / "you keep saying that".
+
+5. CONFUSED → try once more, more simply. If still confused next turn, OFFER
+   "I'm lost", "too confusing", "what does that even mean?", or asking for the
+   same explanation again. First try ONE simpler way: a shorter explanation,
+   an everyday comparison, or one easy question. Only offer a person if that
+   doesn't help.
+
+FRUSTRATED + GOING IN CIRCLES together → CONNECT (no offer).
+
+WHAT DOES NOT COUNT
+- Button taps ("Laptop", "No preference", "Under ₹50k"). Short messages from
+  buttons are normal.
+- "idk" or "not sure" to a preference question. That means "no preference".
+- Needs that don't fit the budget ("gaming laptop under 30k"). That's a budget
+  gap, not confusion: say honestly that nothing fits and show the closest option.
+- People who always type in caps or Hinglish ("kya???"), if nothing else is wrong.
+
+LIMITS
+- Offer a person at most TWICE per conversation.
+- If they choose [Try another way] or say no: "No problem, let's keep going."
+  Then try a simpler way. Offer again only if a new trigger fires.
+
+MESSAGES (keep them this short; warm, never pushy, never "I failed")
+
+Connect, they asked or you can't handle it:
+"Sure! I'm connecting you with a Circuit House store expert now. I've shared
+what we've talked about, so you won't need to repeat anything. They'll message
+you here in about a minute."
+
+Connect, can't handle it:
+"That's something our store team needs to sort out for you. I'm connecting
+you with a store expert now. They'll message you here in about a minute."
+
+Connect, safety:
+"Please stop using it and unplug it now. I'm connecting you with a store
+expert to help. They'll message you here in about a minute."
+
+Connect, frustrated + going in circles:
+"Sorry for going around in circles. I'm bringing in a store expert to help you
+directly. They'll message you here in about a minute."
+
+Offer, frustrated:
+"Sorry, that wasn't helpful. Would you like a store expert to take over, or
+should I try a different way?"
+
+Offer, going in circles:
+"I don't think I'm helping much right now, sorry about that. Want me to bring
+in a store expert, or try a different way?"
+
+Offer, confused:
+"I want to make sure you get this right. Would you like to chat with a store
+expert, or should I explain it another way?"
+
+AFTER CONNECTING (while they wait)
+The chat stays open. If the shopper writes again:
+- A simple question → answer it briefly, then: "Your expert will be with you
+  shortly."
+- Anything else → "Thanks for your patience! Your expert will be with you
+  shortly. Anything quick I can help with meanwhile?"
+Don't recommend new products or push a purchase while they wait, unless they ask.
+
+TONE
+Warm, clear and short. Never guilt, pressure or urgency. Respect their budget;
+a cheaper option is always fine to suggest.`;
+
+/**
  * Fixed technical rules added after whatever team prompt is pasted in /admin, so
  * product cards, option chips, the comparison table and add-to-cart keep working
  * even if a pasted prompt doesn't mention them.
@@ -272,17 +374,24 @@ export const APP_RULES = `HOW THIS APP WORKS (fixed technical rules; always foll
 - productNotes: one per card: "why" (one sentence tied to their use and budget) and "headsUp" (only when it misses one of their requirements, otherwise null).
 - options: up to 6 short tappable replies. When you ask a question, the options are its likely answers.
 - comparison: fill it only when the shopper asks to compare; one value per product, in order; meetsRequirement true for values that meet their needs.
-- cartAddId: set it only after a clear yes to adding one specific product.`;
+- cartAddId: set it only after a clear yes to adding one specific product.
+- handover and handoverReason: follow the HUMAN HANDOVER rules. handover "connect" = a store expert is joining (reply is your connecting message; the app shows the "Connecting you to a store expert" card). handover "offer" = you ask if they'd like an expert (the app adds the buttons [Chat with an expert] [Try another way], so leave options empty). Otherwise null. handoverReason: "asked", "cant-handle", "frustrated", "circles" or "confused" (null when handover is null).
+- conversationState.handover.expert_on_the_way true means an expert is already on the way: follow the waiting rules and never set handover again. Never offer when conversationState.handover.offers_made is 2 or more.
+- "Try another way" after an offer means they declined the expert: keep helping, more simply.
+- Never put "Talk to store expert" or similar in options.`;
 
 export function buildAssistantSystemPrompt(
   settings: AssistantBehaviorSettingsInput,
 ) {
   const flow = settings.happyPathFlow.trim();
+  const handover = settings.humanHandover.trim() || HUMAN_HANDOVER_DEFAULT;
   return `${settings.teamPrompt.trim() || TEAM_PROMPT}
 ${flow ? `
 HAPPY PATH DIALOGUE FLOW (set by the research team in /admin; follow it, and where it differs from any flow described above, this one wins)
 ${flow}
 ` : ""}
+${handover}
+
 ${APP_RULES}
 
 EMPATHY (tuned by the research team for this test)

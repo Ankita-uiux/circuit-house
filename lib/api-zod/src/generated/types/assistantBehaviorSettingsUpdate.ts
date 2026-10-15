@@ -37,6 +37,11 @@ export interface AssistantBehaviorSettingsUpdate {
   /** @maxLength 40000 */
   happyPathFlow: string;
   /**
+     * @minLength 1
+     * @maxLength 40000
+     */
+  humanHandover: string;
+  /**
      * @minimum 0
      * @maximum 10
      */

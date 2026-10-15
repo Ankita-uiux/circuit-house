@@ -100,7 +100,7 @@ export const GetShoppingAssistantReplyBody = zod.object({
   "verbosity": zod.enum(['short', 'normal', 'detailed']).optional(),
   "mode": zod.union([zod.literal('help-me-choose'),zod.literal('know-what-i-want'),zod.literal(null)]).nullish()
 }).optional().describe('Shopper-chosen chat settings, saved in the conversation state and passed to the model.'),
-  "requestHuman": zod.boolean().optional().describe('The shopper tapped "Talk to store expert".'),
+  "requestHuman": zod.boolean().optional().describe('The shopper tapped [Chat with an expert] (hand over to a store expert).'),
   "compareIds": zod.array(zod.string()).max(getShoppingAssistantReplyBodyCompareIdsMax).optional().describe('The shopper tapped "Compare all" under a reply with three products; these are their IDs.')
 })
 
@@ -244,6 +244,8 @@ export const getAssistantBehaviorSettingsResponseTeamPromptMax = 40000;
 
 export const getAssistantBehaviorSettingsResponseHappyPathFlowMax = 40000;
 
+export const getAssistantBehaviorSettingsResponseHumanHandoverMax = 40000;
+
 export const getAssistantBehaviorSettingsResponseEmpathyScaleMin = 0;
 export const getAssistantBehaviorSettingsResponseEmpathyScaleMax = 10;
 
@@ -259,6 +261,8 @@ export const GetAssistantBehaviorSettingsResponse = zod.object({
   "empathyExamples": zod.array(zod.string().max(getAssistantBehaviorSettingsResponseEmpathyExamplesItemMax)).min(getAssistantBehaviorSettingsResponseEmpathyExamplesMin).max(getAssistantBehaviorSettingsResponseEmpathyExamplesMax),
   "teamPrompt": zod.string().max(getAssistantBehaviorSettingsResponseTeamPromptMax).describe('The live team prompt (the default when nothing has been pasted).'),
   "happyPathFlow": zod.string().max(getAssistantBehaviorSettingsResponseHappyPathFlowMax).describe('The "Happy path dialogue flow" box in /admin (empty = none).'),
+  "humanHandover": zod.string().max(getAssistantBehaviorSettingsResponseHumanHandoverMax).describe('The live "Human handover" box (the default when nothing has been saved).'),
+  "humanHandoverDefault": zod.string().describe('The built-in human handover rules, for "Reset to default".'),
   "teamPromptDefault": zod.string().describe('The built-in team prompt, for "Reset to default".'),
   "empathyScale": zod.number().int().min(getAssistantBehaviorSettingsResponseEmpathyScaleMin).max(getAssistantBehaviorSettingsResponseEmpathyScaleMax),
   "goalOrientationScale": zod.number().int().min(getAssistantBehaviorSettingsResponseGoalOrientationScaleMin).max(getAssistantBehaviorSettingsResponseGoalOrientationScaleMax),
@@ -284,6 +288,8 @@ export const updateAssistantBehaviorSettingsBodyTeamPromptMax = 40000;
 
 export const updateAssistantBehaviorSettingsBodyHappyPathFlowMax = 40000;
 
+export const updateAssistantBehaviorSettingsBodyHumanHandoverMax = 40000;
+
 export const updateAssistantBehaviorSettingsBodyEmpathyScaleMin = 0;
 export const updateAssistantBehaviorSettingsBodyEmpathyScaleMax = 10;
 
@@ -299,6 +305,7 @@ export const UpdateAssistantBehaviorSettingsBody = zod.object({
   "empathyExamples": zod.array(zod.string().min(1).max(updateAssistantBehaviorSettingsBodyEmpathyExamplesItemMax)).min(updateAssistantBehaviorSettingsBodyEmpathyExamplesMin).max(updateAssistantBehaviorSettingsBodyEmpathyExamplesMax),
   "teamPrompt": zod.string().min(1).max(updateAssistantBehaviorSettingsBodyTeamPromptMax),
   "happyPathFlow": zod.string().max(updateAssistantBehaviorSettingsBodyHappyPathFlowMax),
+  "humanHandover": zod.string().min(1).max(updateAssistantBehaviorSettingsBodyHumanHandoverMax),
   "empathyScale": zod.number().int().min(updateAssistantBehaviorSettingsBodyEmpathyScaleMin).max(updateAssistantBehaviorSettingsBodyEmpathyScaleMax),
   "goalOrientationScale": zod.number().int().min(updateAssistantBehaviorSettingsBodyGoalOrientationScaleMin).max(updateAssistantBehaviorSettingsBodyGoalOrientationScaleMax)
 })
@@ -318,6 +325,8 @@ export const updateAssistantBehaviorSettingsResponseTeamPromptMax = 40000;
 
 export const updateAssistantBehaviorSettingsResponseHappyPathFlowMax = 40000;
 
+export const updateAssistantBehaviorSettingsResponseHumanHandoverMax = 40000;
+
 export const updateAssistantBehaviorSettingsResponseEmpathyScaleMin = 0;
 export const updateAssistantBehaviorSettingsResponseEmpathyScaleMax = 10;
 
@@ -333,6 +342,8 @@ export const UpdateAssistantBehaviorSettingsResponse = zod.object({
   "empathyExamples": zod.array(zod.string().max(updateAssistantBehaviorSettingsResponseEmpathyExamplesItemMax)).min(updateAssistantBehaviorSettingsResponseEmpathyExamplesMin).max(updateAssistantBehaviorSettingsResponseEmpathyExamplesMax),
   "teamPrompt": zod.string().max(updateAssistantBehaviorSettingsResponseTeamPromptMax).describe('The live team prompt (the default when nothing has been pasted).'),
   "happyPathFlow": zod.string().max(updateAssistantBehaviorSettingsResponseHappyPathFlowMax).describe('The "Happy path dialogue flow" box in /admin (empty = none).'),
+  "humanHandover": zod.string().max(updateAssistantBehaviorSettingsResponseHumanHandoverMax).describe('The live "Human handover" box (the default when nothing has been saved).'),
+  "humanHandoverDefault": zod.string().describe('The built-in human handover rules, for "Reset to default".'),
   "teamPromptDefault": zod.string().describe('The built-in team prompt, for "Reset to default".'),
   "empathyScale": zod.number().int().min(updateAssistantBehaviorSettingsResponseEmpathyScaleMin).max(updateAssistantBehaviorSettingsResponseEmpathyScaleMax),
   "goalOrientationScale": zod.number().int().min(updateAssistantBehaviorSettingsResponseGoalOrientationScaleMin).max(updateAssistantBehaviorSettingsResponseGoalOrientationScaleMax),
