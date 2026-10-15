@@ -155,3 +155,10 @@
 .ch-compare tr:last-child th, .ch-compare tr:last-child td { border-bottom: 0; }
 .ch-compare td.is-good b { color: var(--cx-good); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+
+/* New replies: laid out in full, revealed top to bottom; cards fade in after the text */
+.ch-reveal { animation: ch-reveal linear both; }
+@keyframes ch-reveal { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 -2px 0); } }
+.ch-turn-extras { display: flex; flex-direction: column; gap: 8px; transition: opacity .35s ease; }
+.ch-turn-extras.is-waiting { opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .ch-reveal { animation: none; } .ch-turn-extras { transition: none; } }

@@ -20,11 +20,12 @@ import {
   logNameRetry,
   skipName,
   NAME_RETRY,
+  NAME_AFTER_HELLO,
   FEEDBACK_REASONS,
   saveFeedback,
 } from "../lib/chat-log";
 import { normalizeState } from "../lib/conversation-state";
-import { parseNameReply } from "../lib/participant-name";
+import { isGreetingOnly, parseNameReply } from "../lib/participant-name";
 
 const router: IRouter = Router();
 
@@ -58,8 +59,10 @@ router.post("/shop/chat-sessions/:id/start", async (req, res): Promise<void> => 
       return;
     }
     if (!parsed.name) {
-      await logNameRetry(id, message, NAME_RETRY, state, req.get("user-agent"), settings);
-      res.json({ name: null, reply: NAME_RETRY, pendingRequest: null });
+      // "hello" gets a hello back; anything else unclear gets a gentle retry.
+      const reply = isGreetingOnly(message) ? NAME_AFTER_HELLO : NAME_RETRY;
+      await logNameRetry(id, message, reply, state, req.get("user-agent"), settings);
+      res.json({ name: null, reply, pendingRequest: null });
       return;
     }
     const session = await startNamedSession(id, parsed.name, message, req.get("user-agent"), settings);

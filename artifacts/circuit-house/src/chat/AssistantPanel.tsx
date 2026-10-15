@@ -39,7 +39,6 @@ export function AssistantPanel() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const nearBottom = useRef(true);
   const seen = useRef(messages.length);
-  const [spacer, setSpacer] = useState<{ index: number; height: number } | null>(null);
   const userScrolled = useRef(false);
   const [unread, setUnread] = useState<number | null>(null);
   const collectingName = !chat.nameStepDone;
@@ -102,7 +101,6 @@ export function AssistantPanel() {
   useLayoutEffect(() => {
     if (loading) return;
     seen.current = messages.length;
-    setSpacer(null);
     scrollToBottom('auto');
     // only when loading finishes or the session changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -116,7 +114,6 @@ export function AssistantPanel() {
     if (messages.length <= previous) return;
     const last = messages[messages.length - 1];
     if (last.role === 'user') {
-      setSpacer(null);
       nearBottom.current = true;
       userScrolled.current = false;
       setUnread(null);
@@ -126,10 +123,15 @@ export function AssistantPanel() {
     const index = messages.length - 1;
     // Only a shopper who scrolled up by themselves (to read something) keeps their place.
     if (!userScrolled.current || nearBottom.current) {
-      // Give the new reply at least a full screen of room, so its first line can sit at the top right
-      // away and the text then fills in below it without the chat scrolling.
-      setSpacer({ index, height: Math.max(0, (listRef.current?.clientHeight ?? 0) - 24) });
-      requestAnimationFrame(() => requestAnimationFrame(() => scrollToMessage(index)));
+      // The reply is laid out in full straight away. A reply taller than the chat opens at its first
+      // line; a shorter one is simply shown at the bottom. Either way it is read from the start.
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const list = listRef.current;
+        const element = list?.querySelector<HTMLElement>(`[data-index="${index}"]`);
+        if (!list || !element) return;
+        if (element.offsetHeight > list.clientHeight - 24) scrollToMessage(index);
+        else scrollToBottom();
+      }));
     } else setUnread(index);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length]);
@@ -193,7 +195,7 @@ export function AssistantPanel() {
             const isLatest = index === lastAssistantIndex;
             const ready = !message.animate;
             return (
-              <div key={`${index}-${message.role}`} data-index={index} className={`assistant-turn ${message.role}`} style={spacer?.index === index ? { minHeight: spacer.height } : undefined}>
+              <div key={`${index}-${message.role}`} data-index={index} className={`assistant-turn ${message.role}`}>
                 {message.quote && <div className="assistant-quote-in-turn"><CornerUpLeft size={12} /> <span>{message.quote}</span></div>}
                 {message.kind === 'human' ? <HumanCard text={message.content} /> : (
                   <div className={`assistant-message ${message.role}`} data-testid={`message-${message.role}-${index}`}>
@@ -202,8 +204,12 @@ export function AssistantPanel() {
                       : message.content}
                   </div>
                 )}
-                {ready && !!message.products?.length && <ProductCarousel products={message.products} onChoose={setSheet} onAsk={askAbout} />}
-                {ready && message.comparison && <ComparisonTable comparison={message.comparison} />}
+                {(!!message.products?.length || !!message.comparison) && (
+                  <div className={`ch-turn-extras${ready ? '' : ' is-waiting'}`}>
+                    {!!message.products?.length && <ProductCarousel products={message.products} onChoose={setSheet} onAsk={askAbout} />}
+                    {message.comparison && <ComparisonTable comparison={message.comparison} />}
+                  </div>
+                )}
                 <div className="assistant-turn-meta">
                   {message.createdAt && <time dateTime={message.createdAt}>{timeFormat.format(new Date(message.createdAt))}</time>}
                   {message.role === 'assistant' && message.id && ready && <FeedbackBar message={message} onFeedback={(input) => void feedback(message.id!, input)} onOpenModal={() => setFeedbackFor(message.id!)} />}

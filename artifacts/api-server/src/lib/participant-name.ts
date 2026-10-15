@@ -4,7 +4,14 @@
  * the reply is a shopping request instead, so it can be answered after the name.
  */
 
-const GREETING = /^(?:(?:hi+|hii+|hey+|heyy+|hello+|helo|hola|yo|namaste|hey there|hi there|good (?:morning|afternoon|evening))[\s,!.]*)+/i;
+const GREETING_WORD = "(?:(?:h+i+|h+e+y+|h+e+l+l*o+w*) (?:there|everyone|all|buddy)|h+i+|h+e+y+a*|h+e+l+o+w*|h+e+l+l+o+w*|hola|yo+|namaste|sup|wa+s+u+p+|hey there|hi there|good (?:morning|afternoon|evening))";
+const GREETING = new RegExp(`^(?:${GREETING_WORD}\\b[\\s,!.]*)+`, "i");
+const ONLY_GREETING = new RegExp(`^(?:${GREETING_WORD}\\b[\\s,!.?]*)+$`, "i");
+
+/** "hello", "hii", "helloww", "hey there!" — a greeting with nothing else. */
+export function isGreetingOnly(input: string) {
+  return ONLY_GREETING.test(input.replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu, "").trim());
+}
 
 const NAME_PATTERNS = [
   /\b(?:my\s+name\s+is|my\s+name's|my\s+name\s*:?|name\s+is|name's|i\s+am|i'm|im|i\s+m|call\s+me|you\s+can\s+call\s+me|it'?s\s+me|its\s+me|it\s+is\s+me|this\s+is|myself|mera\s+naam|mai\s+hoon|main\s+hoon|me)\s+([a-z][a-z'.-]*)/i,
@@ -19,7 +26,7 @@ const NOT_A_NAME = new Set([
   'new', 'student', 'buying', 'trying', 'interested', 'going', 'confused', 'back', 'sure', 'yes', 'no', 'nope',
   'hi', 'hii', 'hey', 'hello', 'what', 'why', 'how', 'who', 'help', 'please', 'thanks', 'thank', 'idk', 'nothing',
   'anonymous', 'nobody', 'bot', 'human', 'from', 'in', 'on', 'at', 'very', 'so', 'also', 'really', 'gonna', 'want',
-  'need', 'bhai', 'bro', 'sir', 'madam', 'maam', 'yaar', 'and', 'or', 'but', 'with', 'for', 'to', 'of', 'is', 'am',
+  'need', 'there', 'everyone', 'bhai', 'bro', 'sir', 'madam', 'maam', 'yaar', 'and', 'or', 'but', 'with', 'for', 'to', 'of', 'is', 'am',
 ]);
 
 export type NameReply = { name: string | null; request: string | null };
@@ -27,7 +34,7 @@ export type NameReply = { name: string | null; request: string | null };
 function cleanName(raw: string | undefined): string | null {
   if (!raw) return null;
   const word = raw.replace(/[^A-Za-z'-]/g, '').replace(/^['-]+|['-]+$/g, '');
-  if (word.length < 2 || word.length > 30 || NOT_A_NAME.has(word.toLowerCase())) return null;
+  if (word.length < 2 || word.length > 30 || NOT_A_NAME.has(word.toLowerCase()) || isGreetingOnly(word)) return null;
   // Short all-capital names (initials like "NB") stay as typed.
   if (word.length <= 4 && word === word.toUpperCase()) return word;
   return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();

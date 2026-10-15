@@ -24,22 +24,23 @@ export function ThinkingIndicator({ label }: { label?: string }) {
 
 /* ---------- A new reply appears word by word ---------- */
 export function TypedReply({ text, animate, onDone }: { text: string; animate: boolean; onDone: () => void }) {
-  const words = text.split(/(\s+)/);
-  const [shown, setShown] = useState(animate ? 0 : words.length);
-  const done = useRef(!animate);
+  // The whole reply is laid out at once (so the chat never has to follow a growing message);
+  // it is then revealed from top to bottom, about as fast as a quick reader.
+  const words = text.split(/\s+/).length;
+  const duration = Math.min(2600, Math.max(500, words * 22));
   useEffect(() => {
     if (!animate) return;
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { setShown(words.length); return; }
-    const timer = window.setInterval(() => setShown((current) => Math.min(words.length, current + 2)), 28);
-    return () => window.clearInterval(timer);
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const timer = window.setTimeout(onDone, reduced ? 0 : duration);
+    return () => window.clearTimeout(timer);
     // the text of a message never changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animate]);
-  useEffect(() => {
-    if (!done.current && shown >= words.length) { done.current = true; onDone(); }
-  }, [shown, words.length, onDone]);
-  const visible = shown >= words.length ? text : words.slice(0, shown).join('');
-  return <FormattedReply text={visible} />;
+  return (
+    <div className={animate ? 'ch-reveal' : undefined} style={animate ? { animationDuration: `${duration}ms` } : undefined}>
+      <FormattedReply text={text} />
+    </div>
+  );
 }
 
 /* ---------- Thumbs up / down under each reply ---------- */

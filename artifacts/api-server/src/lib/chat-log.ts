@@ -26,6 +26,7 @@ export function shoppingGreeting(name: string) {
 }
 
 export const NAME_RETRY = "Sorry, I didn’t catch your name. What should I call you? Just your first name is fine.";
+export const NAME_AFTER_HELLO = "Hi there! 👋 What should I call you?";
 
 /** The greeting is saved once per session, before the participant's first reply. */
 async function ensureGreeting(client: { query: (text: string, values?: unknown[]) => Promise<{ rowCount: number | null }> }, id: string) {
