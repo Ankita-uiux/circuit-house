@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEve
 import { ArrowDown, ChevronRight, CornerUpLeft, Headset, MessageCircle, Send, ShoppingCart, SquarePen, X } from 'lucide-react';
 import type { Product } from '@workspace/api-client-react';
 import { useToast } from '@/hooks/use-toast';
-import { useChatInactivity } from '@/hooks/use-chat-inactivity';
+import { CHAT_INACTIVITY_MESSAGE, useChatInactivity } from '@/hooks/use-chat-inactivity';
 import { formatPrice } from '@/shared';
 import { useCart } from '@/cart';
 import { ChooseOptionsSheet, ProductCarousel } from './ProductCards';
@@ -70,8 +70,8 @@ export function AssistantPanel() {
     return () => document.documentElement.classList.remove('chat-open');
   }, [open]);
 
-  useChatInactivity(open && chat.nameStepDone, !!pending, chat.sessionId, messages.length, () => {
-    chat.pushLocal({ role: 'assistant', content: 'Are you still there?' });
+  useChatInactivity(open && chat.nameStepDone && !loading, !!pending, chat.sessionId, messages, () => {
+    chat.pushLocal({ role: 'assistant', content: CHAT_INACTIVITY_MESSAGE });
     void postSessionEvent(chat.sessionId, { type: 'inactivity' }).catch(() => {
       toast({ title: 'Reminder could not be saved', description: 'The inactivity reminder appeared here, but could not be saved to the chat log.' });
     });
