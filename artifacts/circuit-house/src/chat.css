@@ -147,45 +147,21 @@
 .ch-heads-up { color: var(--cx-warn); }
 .ch-starter-chips { margin-bottom: 12px; }
 .ch-starters > p { margin: 0 0 8px; }
-.ch-compare { max-width: 100%; border: 1px solid var(--cx-line); border-radius: 16px; background: linear-gradient(180deg, #f2fbf8 0, #fff 120px); overflow: hidden; box-shadow: 0 4px 14px #0f172a0d; }
-.ch-compare-head { display: flex; align-items: center; gap: 6px; padding: 10px 12px 4px; font: 800 13px var(--cx-font); color: var(--cx-heading); }
-.ch-compare-head svg { color: var(--cx-accent-text); }
-.ch-compare-head span { margin-left: auto; font-weight: 600; font-size: 11.5px; color: var(--cx-muted); }
-.ch-compare-scroll { overflow-x: auto; }
-.ch-compare table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 380px; font-size: 12.5px; table-layout: fixed; }
-.ch-compare th, .ch-compare td { padding: 8px 9px; border-bottom: 1px solid var(--cx-line); text-align: left; vertical-align: top; }
-.ch-compare tbody th, .ch-compare tfoot th, .ch-compare-corner { position: sticky; left: 0; z-index: 1; width: 92px; background: #fff; }
-.ch-compare-corner { background: transparent !important; }
-.ch-compare thead th { position: relative; padding-top: 22px; text-align: center; vertical-align: bottom; font-weight: 700; color: var(--cx-heading); }
+.ch-compare { max-width: 100%; overflow-x: auto; border: 1px solid var(--cx-line); border-radius: 12px; background: #fff; }
+.ch-compare table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 360px; table-layout: fixed; font-size: 12.5px; line-height: 1.4; }
+.ch-compare th, .ch-compare td { padding: 9px 10px; border-bottom: 1px solid var(--cx-line); text-align: left; vertical-align: top; }
+.ch-compare th:first-child { position: sticky; left: 0; z-index: 1; width: 84px; background: #fff; }
+.ch-compare thead th { vertical-align: top; padding-top: 12px; padding-bottom: 10px; color: var(--cx-heading); }
 .ch-compare thead th > span { display: block; }
-.ch-compare-ribbon { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 2px 8px; border-radius: 7px; background: #fff6d6; color: #7a5600; font: 800 10.5px var(--cx-font); }
-.ch-compare-thumb { position: relative; width: 58px; height: 58px; margin: 0 auto 6px; border-radius: 12px; background: #fff; border: 1px solid var(--cx-line); overflow: hidden; display: grid !important; place-items: center; color: var(--cx-accent-text); }
-.ch-compare-thumb img { width: 100%; height: 100%; object-fit: contain; }
-.ch-compare-thumb .ch-img, .ch-compare-thumb .brand-tile { width: 100%; height: 100%; }
-.ch-compare-name { font-size: 12px; line-height: 1.25; display: -webkit-box !important; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.ch-compare-price { margin-top: 3px; font: 800 13.5px var(--cx-font); color: var(--cx-heading); }
-.ch-compare-wins { display: inline-flex !important; align-items: center; gap: 3px; margin: 5px auto 0; padding: 2px 7px; border-radius: var(--cx-pill); background: var(--cx-good-bg); color: var(--cx-good); font: 700 10.5px var(--cx-font); width: max-content; }
-.ch-compare-wins.is-none { background: #eef1f2; color: var(--cx-muted); }
-.ch-compare .is-best { background: #f0fbf7; }
-.ch-compare thead th.is-best { background: linear-gradient(180deg, #dff6ee, #f0fbf7); box-shadow: inset 0 3px 0 var(--cx-accent); }
-.ch-compare-label { display: inline-flex; align-items: center; gap: 6px; color: var(--cx-muted); font-weight: 600; }
-.ch-compare-label svg { flex: none; padding: 4px; box-sizing: content-box; border-radius: 7px; background: #e9f7f3; color: var(--cx-accent-text); }
-.ch-compare-value { display: flex; align-items: flex-start; gap: 5px; color: var(--cx-text); }
-.ch-compare td.is-good .ch-compare-value { color: var(--cx-good); font-weight: 700; }
-.ch-compare-tick { flex: none; display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--cx-good); color: #fff; margin-top: 1px; }
-.ch-compare-bar { display: block; height: 5px; margin-top: 6px; border-radius: 3px; background: #eef1f2; overflow: hidden; }
-.ch-compare-bar i { display: block; height: 100%; border-radius: 3px; background: #9aa5ad; transform-origin: left; animation: ch-bar-grow .8s ease-out both; }
-.ch-compare-bar i.is-low { background: var(--cx-good); }
-@keyframes ch-bar-grow { from { transform: scaleX(0); } }
-.ch-compare-stars { display: flex; gap: 1px; margin-top: 4px; color: #d5dade; }
-.ch-compare-stars .is-on { color: var(--cx-star); fill: var(--cx-star); }
-.ch-compare tfoot td, .ch-compare tfoot th { border-bottom: 0; text-align: center; }
-.ch-compare-add { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: var(--cx-pill); border: 0; background: var(--cx-accent); color: var(--cx-accent-ink); font: 800 12px var(--cx-font); cursor: pointer; }
-.ch-compare-add:hover { background: var(--cx-accent-hover); }
-.ch-compare-add:focus-visible { outline: none; box-shadow: var(--cx-focus); }
-.ch-compare-legend { display: flex; align-items: center; gap: 6px; margin: 0; padding: 7px 12px 10px; font-size: 11px; color: var(--cx-muted); border-top: 1px solid var(--cx-line); }
-.ch-compare-legend .ch-compare-tick { margin: 0; width: 14px; height: 14px; }
-@media (prefers-reduced-motion: reduce) { .ch-compare-bar i { animation: none; } }
+.ch-compare-thumb { position: relative; width: 64px; height: 64px; margin-bottom: 8px; border-radius: 10px; background: var(--cx-tile); overflow: hidden; }
+.ch-compare-thumb .ch-img img { padding: 8%; }
+.ch-compare-best { width: max-content; margin-top: 5px; padding: 1px 7px; border-radius: 6px; background: #fff6d6; color: #7a5600; font: 800 10.5px var(--cx-font); }
+.ch-compare-name { font-weight: 700; font-size: 12.5px; line-height: 1.3; display: -webkit-box !important; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ch-compare-price { margin-top: 2px; font: 800 13px var(--cx-font); }
+.ch-compare tbody th { color: var(--cx-muted); font-weight: 600; }
+.ch-compare tbody td { color: var(--cx-text); }
+.ch-compare tr:last-child th, .ch-compare tr:last-child td { border-bottom: 0; }
+.ch-compare td.is-good b { color: var(--cx-good); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
 
 /* New replies: laid out in full, revealed top to bottom; cards fade in after the text */

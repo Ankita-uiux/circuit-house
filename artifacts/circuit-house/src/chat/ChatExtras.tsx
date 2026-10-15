@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ArrowUp, BatteryFull, Camera, Check, CircleDot, Cpu, Feather, Gauge, HardDrive, Headphones, IndianRupee, MemoryStick, Monitor, Package, PhoneCall, ShieldCheck, ShoppingCart, Sparkles, Star, Tag, Target, ThumbsDown, ThumbsUp, X, Zap, type LucideIcon } from 'lucide-react';
-import type { ChatPreferences, Product } from '@workspace/api-client-react';
+import { ArrowUp, PhoneCall, Sparkles, ThumbsDown, ThumbsUp, X } from 'lucide-react';
+import type { ChatPreferences } from '@workspace/api-client-react';
 import { formatPrice } from '@/shared';
 import { ProductImage, rememberedProduct } from '@/components/store-ui';
 import { FormattedReply } from './FormattedReply';
@@ -166,93 +166,36 @@ export function TryAsking({ suggestions, asQuestion, onPick }: { suggestions: st
   );
 }
 
-/** Row label -> icon, so each spec reads at a glance. */
-const ROW_ICONS: Array<[RegExp, LucideIcon]> = [
-  [/price|cost/i, IndianRupee], [/processor|chip|cpu|soc/i, Cpu], [/ram|memory/i, MemoryStick], [/storage|ssd|rom/i, HardDrive],
-  [/display|screen/i, Monitor], [/battery/i, BatteryFull], [/camera/i, Camera], [/best for|use|good for/i, Target],
-  [/rating|review/i, Star], [/brand/i, Tag], [/weight/i, Feather], [/anc|noise|audio|sound|driver/i, Headphones],
-  [/graphics|gpu/i, Gauge], [/charg/i, Zap], [/warranty/i, ShieldCheck],
-];
-const rowIcon = (label: string) => ROW_ICONS.find(([pattern]) => pattern.test(label))?.[1] ?? CircleDot;
-
-/** "Compare all 3": side-by-side visual table. Photos up top, best fit highlighted, wins ticked. */
-export function ComparisonTable({ comparison, onChoose }: { comparison: NonNullable<ChatMessage['comparison']>; onChoose?: (product: Product) => void }) {
-  const full = comparison.products.map((product) => rememberedProduct(product.id));
-  const bestIndex = full.findIndex((product) => product?.bestFit);
-  const prices = comparison.products.map((product) => product.price);
-  const maxPrice = Math.max(...prices, 1);
-  const minPrice = Math.min(...prices);
-  const wins = comparison.products.map((_, column) => comparison.rows.filter((row) => row.values[column]?.meetsRequirement).length);
-  const col = (index: number) => (index === bestIndex ? 'is-best' : '');
+/** "Compare all": photo, name and price on top; specs below; values that meet the shopper's needs in bold. */
+export function ComparisonTable({ comparison }: { comparison: NonNullable<ChatMessage['comparison']> }) {
   return (
     <div className="ch-compare" data-testid="comparison-table">
-      <div className="ch-compare-head"><Sparkles size={14} /> Side by side <span>{comparison.products.length} picks · {comparison.rows.length} specs</span></div>
-      <div className="ch-compare-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col" className="ch-compare-corner"><span className="sr-only">Spec</span></th>
-              {comparison.products.map((product, index) => {
-                const known = full[index];
-                return (
-                  <th scope="col" key={product.id} className={col(index)}>
-                    {index === bestIndex && <span className="ch-compare-ribbon">⭐ Best fit</span>}
-                    <span className="ch-compare-thumb">{known ? <ProductImage product={known} sizes="thumb" /> : <Package size={26} strokeWidth={1.4} />}</span>
-                    <span className="ch-compare-name">{product.name}</span>
-                    <span className="ch-compare-price">{formatPrice(product.price)}</span>
-                    <span className={`ch-compare-wins${wins[index] ? '' : ' is-none'}`} title="Specs that match what you asked for">{wins[index] > 0 && <Check size={11} strokeWidth={3} />} {wins[index]}/{comparison.rows.length} match</span>
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {comparison.rows.map((row) => {
-              const Icon = rowIcon(row.label);
-              const isPrice = /price|cost/i.test(row.label);
-              const isRating = /rating/i.test(row.label);
+      <table>
+        <thead>
+          <tr>
+            <th scope="col"><span className="sr-only">Spec</span></th>
+            {comparison.products.map((product) => {
+              const known = rememberedProduct(product.id);
               return (
-                <tr key={row.label}>
-                  <th scope="row"><span className="ch-compare-label"><Icon size={14} aria-hidden="true" /> {row.label}</span></th>
-                  {row.values.map((value, index) => {
-                    const rating = isRating ? Number.parseFloat(value.text) : NaN;
-                    return (
-                      <td key={index} className={`${col(index)}${value.meetsRequirement ? ' is-good' : ''}`}>
-                        <span className="ch-compare-value">
-                          {value.meetsRequirement && <span className="ch-compare-tick" aria-label="Matches what you asked for"><Check size={11} strokeWidth={3} /></span>}
-                          <span>{value.text}</span>
-                        </span>
-                        {isPrice && prices[index] !== undefined && (
-                          <span className="ch-compare-bar" aria-hidden="true"><i className={prices[index] === minPrice ? 'is-low' : ''} style={{ width: `${Math.max(12, (prices[index] / maxPrice) * 100)}%` }} /></span>
-                        )}
-                        {isRating && rating > 0 && rating <= 5 && (
-                          <span className="ch-compare-stars" aria-hidden="true">{[1, 2, 3, 4, 5].map((n) => <Star key={n} size={11} className={n <= Math.round(rating) ? 'is-on' : ''} />)}</span>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
+                <th scope="col" key={product.id}>
+                  <span className="ch-compare-thumb">{known && <ProductImage product={known} sizes="thumb" />}</span>
+                  <span className="ch-compare-name">{product.name}</span>
+                  <span className="ch-compare-price">{formatPrice(product.price)}</span>
+                  {known?.bestFit && <span className="ch-compare-best">⭐ Best fit</span>}
+                </th>
               );
             })}
-          </tbody>
-          {onChoose && (
-            <tfoot>
-              <tr>
-                <th scope="row"><span className="sr-only">Add</span></th>
-                {comparison.products.map((product, index) => {
-                  const known = full[index];
-                  return (
-                    <td key={product.id} className={col(index)}>
-                      {known && <button type="button" className="ch-compare-add" onClick={() => onChoose(known)} data-testid={`button-compare-add-${product.id}`}><ShoppingCart size={13} /> Add</button>}
-                    </td>
-                  );
-                })}
-              </tr>
-            </tfoot>
-          )}
-        </table>
-      </div>
-      <p className="ch-compare-legend"><span className="ch-compare-tick"><Check size={10} strokeWidth={3} /></span> matches what you asked for</p>
+          </tr>
+        </thead>
+        <tbody>
+          {comparison.rows.map((row, rowIndex) => (
+            <tr key={`${row.label}-${rowIndex}`}>
+              <th scope="row">{row.label}</th>
+              {row.values.map((value, index) => <td key={index} className={value.meetsRequirement ? 'is-good' : ''}>{value.meetsRequirement ? <b>{value.text}</b> : value.text}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

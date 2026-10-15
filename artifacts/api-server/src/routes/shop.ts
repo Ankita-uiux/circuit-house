@@ -92,21 +92,53 @@ function offTopicReply(state: ConversationState) {
 }
 
 /** A plain side-by-side table from catalog data, used if the model doesn't return one. */
+/** Named spec rows pulled from each product's spec list, so a comparison always shows real specs. */
+const SPEC_ROWS: Array<{ label: string; match: RegExp }> = [
+  { label: "Processor", match: /snapdragon|dimensity|tensor|exynos|bionic|\bcore (?:i\d|ultra|\d)|ryzen|\bm\d\b|apple m|\bchip\b|processor|helio|intel|\bgen \d/i },
+  { label: "Memory", match: /\b\d+\s?gb\b.*(?:ram|storage|ssd)|\bram\b|\bssd\b|storage/i },
+  { label: "Display", match: /display|amoled|oled|\blcd\b|\bips\b|\d(?:\.\d)?["”]|\d+\s?hz|inch/i },
+  { label: "Camera", match: /\bmp\b|\d+mp|camera/i },
+  { label: "Battery", match: /mah|battery|hours?|hrs?\b|charging/i },
+  { label: "Sound", match: /\banc\b|noise|driver|audio|spatial|dolby|speaker/i },
+  { label: "Weight", match: /\bkg\b|\d+\s?g\b(?!b)|weight|grams/i },
+];
+export function specRows(products: StoreProduct[]): Comparison["rows"] {
+  const used = products.map(() => new Set<number>());
+  const rows: Comparison["rows"] = [];
+  for (const spec of SPEC_ROWS) {
+    const values = products.map((product, column) => {
+      const index = product.specs.findIndex((text, i) => !used[column].has(i) && spec.match.test(text));
+      if (index < 0) return null;
+      used[column].add(index);
+      return product.specs[index];
+    });
+    if (values.filter(Boolean).length >= Math.min(2, products.length)) {
+      rows.push({ label: spec.label, values: values.map((text) => ({ text: text ?? "—", meetsRequirement: false })) });
+    }
+  }
+  return rows;
+}
+
 function basicComparison(products: StoreProduct[], state: ConversationState): Comparison {
   const inr = (value: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
   const ceiling = state.budget_stretch ?? state.budget_max;
   const rows: Comparison["rows"] = [
     { label: "Price", values: products.map((product) => ({ text: inr(product.price), meetsRequirement: ceiling !== null && product.price <= ceiling })) },
     { label: "Brand", values: products.map((product) => ({ text: product.brand, meetsRequirement: false })) },
+    ...specRows(products),
   ];
-  const depth = Math.min(4, Math.max(...products.map((product) => product.specs.length)));
-  for (let i = 0; i < depth; i += 1) {
-    rows.push({ label: i === 0 ? "Key specs" : "", values: products.map((product) => ({ text: product.specs[i] ?? "—", meetsRequirement: false })) });
-  }
   if (products.some((product) => product.rating)) {
     rows.push({ label: "Rating", values: products.map((product) => ({ text: product.rating ? `${product.rating.toFixed(1)} ★${product.reviewCount ? ` (${product.reviewCount.toLocaleString("en-IN")})` : ""}` : "No ratings yet", meetsRequirement: false })) });
   }
   return { products: products.map(({ id, name, price }) => ({ id, name, price })), rows };
+}
+
+/** Adds spec rows the model left out, so "Compare all" never shows just price and one spec. */
+function withSpecRows(comparison: Comparison, products: StoreProduct[]): Comparison {
+  const have = comparison.rows.map((row) => row.label.toLowerCase());
+  const covers = (label: string) => have.some((existing) => existing.includes(label.toLowerCase()) || (label === "Memory" && /ram|storage/.test(existing)) || (label === "Processor" && /chip|cpu/.test(existing)) || (label === "Display" && /screen/.test(existing)));
+  const extra = specRows(products).filter((row) => !covers(row.label));
+  return { ...comparison, rows: [...comparison.rows, ...extra].slice(0, 9) };
 }
 
 /** Which stage of the team's conversation flow we are in, and which slots are still missing. */
@@ -410,6 +442,7 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
           products: order.map((id) => comparison!.products[indexOf.indexOf(id)]),
           rows: comparison.rows.map((row) => ({ ...row, values: order.map((id) => row.values[indexOf.indexOf(id)]) })),
         };
+        comparison = withSpecRows(comparison, compareProducts);
       } else {
         comparison = basicComparison(compareProducts, state);
       }
