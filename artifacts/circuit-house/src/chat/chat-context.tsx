@@ -6,7 +6,7 @@ import { apiUrl, type CartLine } from '@/shared';
 /**
  * One conversation per browser tab, saved on the server by session ID.
  * Closing the panel keeps it; refreshing reloads it from the server;
- * "New chat" starts a fresh one for the same participant.
+ * "New chat" starts a fresh conversation and asks for the participant's name again.
  */
 
 export type ChatMessage = {
@@ -244,11 +244,12 @@ export function ChatProvider({ cart, onCartAdd, children }: { cart: CartLine[]; 
     else { queued.current = text; setPrompt(''); }
   }, [nameStepDone, send]);
 
-  const reset = useCallback((keepName: boolean) => {
+  const reset = useCallback(() => {
     if (pending) return;
-    if (!keepName) { storageSet(NAME_KEY, null); setParticipantName(''); }
-    else setParticipantName('');
+    storageSet(NAME_KEY, null);
+    setParticipantName('');
     setNameSkipped(false);
+    setPreferences({ verbosity: 'normal', mode: null });
     setMessages([GREETING]);
     setPrompt('');
     setQuote(null);
@@ -267,8 +268,8 @@ export function ChatProvider({ cart, onCartAdd, children }: { cart: CartLine[]; 
       }).catch(() => undefined);
     },
     send, ask,
-    newChat: () => reset(true),
-    newParticipant: () => reset(false),
+    newChat: reset,
+    newParticipant: reset,
     pushLocal: (message) => setMessages((current) => [...current, { ...message, local: true, createdAt: new Date().toISOString() }]),
     giveFeedback: async (messageId, input) => {
       const previous = messages.find((message) => message.id === messageId)?.feedback ?? null;
