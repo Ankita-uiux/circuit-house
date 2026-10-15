@@ -208,7 +208,7 @@ export function AssistantPanel() {
                 {(!!message.products?.length || !!message.comparison) && (
                   <div className={`ch-turn-extras${ready ? '' : ' is-waiting'}`}>
                     {!!message.products?.length && <ProductCarousel products={message.products} onChoose={setSheet} onAsk={askAbout} />}
-                    {message.comparison && <ComparisonTable comparison={message.comparison} />}
+                    {message.comparison && <ComparisonTable comparison={message.comparison} onChoose={setSheet} />}
                   </div>
                 )}
                 <div className="assistant-turn-meta">
