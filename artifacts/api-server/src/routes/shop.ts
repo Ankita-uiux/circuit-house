@@ -19,6 +19,7 @@ import { withStoreDetails, type StoreProduct } from "../lib/product-extras";
 import { enrichmentFor } from "../lib/product-enrichment";
 import { allowedProducts, overBudgetBy, sanitizeReply } from "../lib/reply-filters";
 import { isPin, storeServiceContext } from "../lib/store-services";
+import { isOfferQuestion, offerProducts, offerReply, lookupOffers, type OfferResearch } from "../lib/offers";
 
 const router: IRouter = Router();
 
@@ -42,6 +43,8 @@ Products for this turn:
 - productNotes: one entry per productId you return (why, headsUp). comparison: only for "Compare all 3", otherwise null. cartAddId: only when the shopper clearly asked to add that product to the cart; otherwise null.
 - conversationStage and missingSlots are computed from conversationState: follow the stage rules for that stage.
 - storeServices, when present, holds demo results for order lookup, returns, exchange estimates and delivery by PIN code, plus store policies. Answer service questions only from it, and ask for the order ID, PIN code or old model when needed.`;
+
+const OFFER_RULES = `Only discuss discounts, coupons, cashback or EMI when the shopper asks about them. Do not proactively add offer text to product recommendations. Circuit House has no payment gateway or bank partnership: never promise bank discounts or no-cost EMI here, and never turn another merchant's promotion into a Circuit House offer. The dedicated offer handler supplies verified issuer options and the existing CAMPUS5 terms. Ignore historical unsupported offer claims.`;
 
 function storeProduct(product: CatalogProduct, pin: string | null = null): StoreProduct {
   return withStoreDetails(withIcecatImage(product), enrichmentFor(product.id), pin);
@@ -226,7 +229,7 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
     }
     state = update.state;
 
-    type Extras = { options?: string[]; comparison?: Comparison | null; cartAdd?: StoreProduct | null; handover?: { action: "connect" | "offer"; reason: HandoverReason } | null };
+    type Extras = { options?: string[]; comparison?: Comparison | null; cartAdd?: StoreProduct | null; handover?: { action: "connect" | "offer"; reason: HandoverReason } | null; offerResearch?: OfferResearch };
     const finish = async (reply: string, cards: StoreProduct[], market: MarketResult, extraLog = "", kind: "reply" | "human" | "off-topic" = "reply", extras: Extras = {}) => {
       const suggestions = extras.options ?? [];
       const comparison = extras.comparison ?? null;
@@ -236,7 +239,7 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
       if (sessionId) {
         await saveSessionState(sessionId, state).catch((error) => req.log.warn({ error: String(error) }, "Could not save conversation state"));
         messageId = await logMessage(sessionId, "assistant", reply + extraLog, cards.map((product) => product.id), Date.now() - startedAt,
-          { display: reply, products: cards, market: marketForUi, intent: update.intent, interpretation: update.interpretation || undefined, kind, suggestions, comparison, cartAdd: cartAdd ? { id: cartAdd.id, name: cartAdd.name } : null, handover: extras.handover ?? null });
+          { display: reply, products: cards, market: marketForUi, intent: update.intent, interpretation: update.interpretation || undefined, kind, suggestions, comparison, cartAdd: cartAdd ? { id: cartAdd.id, name: cartAdd.name } : null, handover: extras.handover ?? null, offerResearch: extras.offerResearch });
       }
       res.json(GetShoppingAssistantReplyResponse.parse({ reply, products: cards, market: marketForUi, messageId, kind, suggestions, comparison, cartAdd }));
     };
@@ -251,6 +254,23 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
       }
       state.handover = { ...state.handover, expert_on_the_way: true };
       await finish(HUMAN_REPLY, [], noMarket, `\n\n[Handover: connected · ${HANDOVER_LABELS.asked}]`, "human", { handover: { action: "connect", reason: "asked" } });
+      return;
+    }
+
+    // Offers are chat-only. Bypass shopping slots and product-card generation.
+    const offerPool = [...catalog, ...state.web_products];
+    const selectedOffers = offerProducts(message, quote ?? null, state, offerPool);
+    const offerFollowUp = lastAssistant?.includes('Which product should I check:') && selectedOffers.some((p) => message.toLowerCase().includes(p.name.toLowerCase()));
+    if (isOfferQuestion(message, lastAssistant ?? '') || offerFollowUp) {
+      update.intent = 'store-service';
+      const bankWords = /\b(hdfc|sbi|icici|axis|kotak|idfc|credit|debit|bank|cashback|emi|instalments?|installments?|all offers)\b/i;
+      const bankMessage = offerFollowUp ? [...history].reverse().find((turn) => turn.role === 'user' && bankWords.test(turn.content))?.content ?? message : message;
+      const bankSpecified = bankWords.test(bankMessage) || /^(any|all)( banks| cards| offers)?[.!?]*$/i.test(bankMessage.trim());
+      if (selectedOffers.length === 1) state.last_discussed = { category: selectedOffers[0].category, products: [selectedOffers[0].id] };
+      const research: OfferResearch = selectedOffers.length > 1 || !bankSpecified
+        ? { status: 'not-needed', checkedAt: null, benefits: [] }
+        : await lookupOffers(openai, bankMessage, selectedOffers[0] ?? null);
+      await finish(offerReply(selectedOffers, research, !bankSpecified), [], noMarket, '', 'reply', { offerResearch: research });
       return;
     }
 
@@ -361,6 +381,7 @@ router.post("/shop/assistant/reply", async (req, res): Promise<void> => {
       messages: [
         { role: "system", content: buildAssistantSystemPrompt(behaviorSettings) },
         { role: "system", content: CONVERSATION_STATE_RULES },
+        { role: "system", content: OFFER_RULES },
         ...history.map((turn) => ({ role: turn.role, content: turn.content })),
         {
           role: "user",
